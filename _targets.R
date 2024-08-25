@@ -1,0 +1,79 @@
+library(targets)
+library(tarchetypes)
+# This is an example _targets.R file. Every
+# {targets} pipeline needs one.
+# Use tar_script() to create _targets.R and tar_edit()
+# to open it again for editing.
+# Then, run tar_make() to run the pipeline
+# and tar_read(data_summary) to view the results.
+
+# Define custom functions and other global objects.
+# This is where you write source(\"R/functions.R\")
+# if you keep your functions in external scripts.
+tar_source("R/functions.R")
+
+# Set target-specific options such as packages:
+tar_option_set(packages = c("utils","tidyverse","sf","galah"))
+
+# End this file with a list of target objects.
+list(
+  # Load data 
+  tar_target(vic_map, sf::read_sf(
+    here::here("data/SA2_2021_AUST_SHP_GDA2020/SA2_2021_AUST_GDA2020.shp")) |>
+    filter(STE_CODE21 == 2 & !is.na(AREASQKM21)) # STE_NAME21 == "Victoria" 
+    ),
+  tar_target(crs_GDA2020, sf::st_crs(vic_map)),
+  
+  # VNPA's Bunyip sites
+  tar_target(vnpa_bunyip_site,
+             read_csv(here::here("data/vnpa_bunyip_site.csv")) |> 
+               janitor::clean_names()),
+  
+  # Load data from ALA
+  tar_target(ala_sbb_raw, 
+             get_ala_data(species_comm_name = "Southern Brown Bandicoot")),
+  
+  # Load data from VBA
+  tar_target(
+    vba_fauna_filepaths,
+    c("C:/Users/huyen/OneDrive/home/1_School/B6022/1_ETC5543_Project/ETC5543-VNPA/raw-data/Order_7JR9NQ/ll_gda2020/esrishape/whole_of_dataset/victoria/FLORAFAUNA1/VBA_FAUNA25.shp",
+      "C:/Users/huyen/OneDrive/home/1_School/B6022/1_ETC5543_Project/ETC5543-VNPA/raw-data/Order_7JR9NQ/ll_gda2020/esrishape/whole_of_dataset/victoria/FLORAFAUNA1/VBA_FAUNA25_1.shp"
+    )
+  ),
+  # Read each shapefile and return a list of sf objects
+  tar_target(vba_fauna_listOfShp, lapply(vba_fauna_filepaths, sf::read_sf)),
+  # Bind 1 and 2
+  tar_target(vba_fauna, do.call(what = sf:::rbind.sf, args=vba_fauna_listOfShp)),
+  
+  # Filepath
+  tar_target(filepath,
+  rbind(
+    data.frame(
+      name = c("fire_history"), 
+      path = c(here::here("raw-data/Order_EHPYIY/ll_gda2020/esrishape/whole_of_dataset/victoria/FIRE/FIRE_HISTORY.shp"))),
+    data.frame(
+      name = c("parkres"), 
+      path = c(here::here("raw-data/Order_CORKDM/ll_gda2020/esrishape/whole_of_dataset/victoria/CROWNLAND/PARKRES.shp"))),
+    data.frame(
+      name = c("vba_fauna"), 
+      path = c(here::here("raw-data/Order_7JR9NQ/ll_gda2020/esrishape/whole_of_dataset/victoria/FLORAFAUNA1/VBA_FAUNA25.shp"))),
+    data.frame(
+      name = c("vba_fauna"), 
+      path = c(here::here("raw-data/Order_7JR9NQ/ll_gda2020/esrishape/whole_of_dataset/victoria/FLORAFAUNA1/VBA_FAUNA25_1.shp"))))
+  ),
+  
+  # Fire History
+  tar_target(fire_history,
+    sf::read_sf(filepath[filepath$name == "fire_history", "path"])
+  ),
+  # Park boundaries
+  tar_target(parkres,
+    sf::read_sf(filepath[filepath$name == "parkres", "path"])
+  ),
+  
+  
+  # # Process data 
+  tar_target(vba_fauna_sbb,
+             vba_fauna |> filter(TAXON_ID == 61092))
+  
+  )

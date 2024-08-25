@@ -1,0 +1,245 @@
+---
+title: "EDA on Southern Brown Bandicoot sightings in Victoria"
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 2
+editor: source
+execute:
+  echo: false
+  message: false
+  warning: false
+---
+
+```{r library}
+# Library
+lib <- c("targets","tidyverse","sf","galah","tmap","leaflet","plotly")
+invisible(lapply(lib, library, character.only = TRUE))
+rm(lib)
+```
+
+# Get data
+
+```{r get-data}
+# 1. Wildlife sightings --------------------------------------------------------
+# 1.1 ALA
+tar_load(ala_sbb_raw)
+
+# 1.2 VBA
+vba_fauna_sbb <- tar_read(vba_fauna) |> 
+  filter(TAXON_ID == 61092 # "Southern Brown Bandicoot"
+         # & START_YEAR >= 2010
+         ) 
+
+# Parks boundary ---------------------------------------------------------------
+tar_load(parkres)
+bbox_bunyip <- st_bbox(parkres |> filter(NAME == "Bunyip State Park")) 
+
+# Victoria map SA2
+tar_load(vic_map)
+```
+
+# Data sources: ALA v. VBA
+
+```{r}
+#| eval: false 
+
+# Plot: sightings all time
+ggplot() + 
+  geom_sf(data = vic_map) +
+  geom_sf(data = ala_sbb_raw,
+          color = "limegreen") +
+  # facet_wrap(~vba_fauna1_agile$START_YEAR) + 
+  labs(title = "Southern Brown Bandicoot sightings, all time",
+       subtitle = "ALA")
+
+ggplot() + 
+  geom_sf(data = vic_map) +
+  geom_sf(data = vba_fauna_sbb,
+          color = "limegreen") +
+  # coord_sf(xlim = bbox[c("xmin", "xmax")], ylim = bbox[c("ymin", "ymax")]) + # Zoom
+  # facet_wrap(~vba_fauna1_agile$START_YEAR) + 
+  labs(title = "Southern Brown Bandicoot sightings, all time",
+       subtitle = "VBA")
+
+# Plot: since 2019
+ggplot() + 
+  geom_sf(data = vic_map) +
+  geom_sf(data = ala_sbb_raw |> filter(Year > 2008),
+          color = "limegreen") +
+  coord_sf(xlim = bbox_bunyip[c("xmin", "xmax")], ylim = bbox_bunyip[c("ymin", "ymax")]) + # Zoom Bunyip
+  # coord_sf(xlim = c(145, 146), ylim = c(-38.4,-38.0)) + # Zoom
+  facet_wrap(~Year) +
+  labs(title = "Southern Brown Bandicoot sightings, since 2019",
+       subtitle = "ALA")
+
+ggplot() + 
+  geom_sf(data = vic_map) +
+  geom_sf(data = vba_fauna_sbb |> filter(START_YEAR > 2007),
+          color = "limegreen") +
+  # coord_sf(xlim = bbox_bunyip[c("xmin", "xmax")], ylim = bbox_bunyip[c("ymin", "ymax")]) + # Zoom Bunyip
+  # coord_sf(xlim = c(145, 146), ylim = c(-38.4,-38.0)) + # Zoom
+  facet_wrap(~START_YEAR) +
+  labs(title = "Southern Brown Bandicoot sightings, since 2019",
+       subtitle = "VBA")
+```
+
+```{r try-leaflet}
+# # try leaftlet -> too slow
+# # Reproject GSA2020 to EPSG:4326
+# vic_map_4326 <- st_transform(vic_map, 4326)
+# ala_sbb_raw_4326 <- st_transform(ala_sbb_raw, 4326)
+# # st_crs(vic_map_4326)
+# 
+# leaflet() |>
+#   addPolygons(data = vic_map_4326) |> 
+#   addCircleMarkers(data = ala_sbb_raw_4326, popup = ~Year)
+```
+
+# Parks 
+
+```{r}
+# ALA_SBB sighting within parkres areas 
+st_crs(ala_sbb_raw) <- st_crs(parkres)
+ala_sbb_parkres <- 
+  st_join(ala_sbb_raw, parkres[,"NAME"], 
+          join = st_within, left = FALSE) |> # inner join
+  rename(PARKRES_NAME = NAME)
+
+# Spatial distribution 
+ggplot() +
+  geom_sf(data = vic_map) + 
+  geom_sf(data = parkres, fill=alpha("limegreen",0.5)) +
+  geom_sf(data = ala_sbb_parkres |> filter(Year > 1999), 
+          color = "maroon", size = 1)
+
+# Count 
+ala_sbb_parkres |> st_drop_geometry() |> 
+  group_by(Year) |> summarise(count_obs = n()) |> 
+  filter(Year > 1999) |> 
+  ggplot(aes(x=Year, y =count_obs)) +
+  geom_col(fill = "maroon") + 
+  geom_text(aes(label = count_obs), vjust = -0.5) +
+  labs(title = "Southern Brown Bandicoot sightings within parks",
+       subtitle = "ALA")
+```
+
+
+```{r}
+# VBA_SBB sighting within parkres areas 
+vba_sbb_parkres <- st_join(vba_fauna_sbb, parkres[,"NAME"], 
+                           join = st_within, left = FALSE) |> # inner join 
+  filter(START_YEAR > 1999) |> 
+  rename(PARKRES_NAME = NAME)
+  
+# Spatial distribution 
+ggplot() +
+  geom_sf(data = vic_map) + 
+  geom_sf(data = parkres, fill=alpha("limegreen",0.5)) +
+  geom_sf(data = vba_sbb_parkres, 
+          color = "tan1", size = 1)
+
+# Count 
+vba_sbb_parkres |> st_drop_geometry() |> 
+  group_by(START_YEAR) |> summarise(count_obs = n()) |> 
+  ggplot(aes(x=START_YEAR, y =count_obs)) +
+  geom_col(fill = "tan1") + 
+  geom_text(aes(label = count_obs), vjust = -0.5) +
+  labs(title = "Southern Brown Bandicoot sightings within parks",
+       subtitle = "VBA")
+```
+ 
+# Interactive map
+
+```{r plotly}
+#| eval: false 
+map <- ggplot() + 
+  geom_sf(data = vic_map, fill = "grey95", color = "grey70") +
+  geom_sf(data = ala_sbb_raw |> filter(Year > 2018),
+          aes(color = as.factor(Year)))
+
+ggplotly(map) |> 
+  layout(title = "ALA: Southern Brown Bandicoot sightings, since 2019")
+```
+
+```{r}
+#| eval: false 
+# Create bounding box (bbox) 
+# bbox <- st_bbox(vic_map)
+bbox <- st_bbox( c(xmin = 145.540805, ymin = -38.026482, xmax = 145.846244, ymax = -37.882282), 
+                 crs = st_crs(vic_map) )
+
+# tmap_mode("view") # Turn on interactive map
+# tmap_mode("plot") # Turn off interactive map
+ala_sbb_2018 <- ala_sbb_raw |> filter(Year >= 2018)
+
+tm_shape(vic_map, bbox = bbox_bunyip) + # Zoom in with bbox
+  tm_fill(col = "grey90") + 
+  tm_borders(col = "white") + 
+  tm_shape(vba_fauna_sbb |> filter(START_YEAR > 2018)) +
+  tm_symbols(size = 1, col = "limegreen") +
+  tm_facets(by = "START_YEAR")
+```
+
+
+# Fire history 
+
+```{r}
+# Select fire POLYONS contains sighting POINTS
+# tar_load(fire_history)
+fire_history_subset <- fire_history[vba_sbb_parkres,]
+
+ggplot() +
+  geom_sf(data = vic_map) + 
+  geom_sf(data = fire_history_subset, fill=alpha("darkred",0.5)) + 
+  geom_sf(data = vba_sbb_parkres, 
+          color = "tan1", size = 1)
+
+# Join sightings with fire history 
+vba_sbb_parkres_fire <-
+  st_join(vba_sbb_parkres,
+          fire_history_subset[, c("FIRETYPE", "SEASON", "FIRE_NO")],
+          join = st_within, left = TRUE) |> 
+  rename(FIRE_TYPE = FIRETYPE, FIRE_SEASON = SEASON) |> 
+  # filter(START_YEAR >= FIRE_SEASON | is.na(FIRE_SEASON)) |> # sighting_date > fire SEASON (year)
+  # Get the latest fire of each sighting
+  arrange(RECORD_ID, desc(FIRE_SEASON), desc(FIRE_NO)) |> 
+  group_by(RECORD_ID) |>
+  dplyr::slice_head(n=1) |> 
+  dplyr::mutate(
+    TIME_SINCE_FIRE = 
+      dplyr::if_else(START_YEAR - FIRE_SEASON < 0, NA, START_YEAR - FIRE_SEASON),
+    FIRE_TYPE = dplyr::if_else(is.na(TIME_SINCE_FIRE), NA, FIRE_TYPE),
+    FIRE_SEASON = dplyr::if_else(is.na(TIME_SINCE_FIRE), NA, FIRE_SEASON),
+    FIRE_NO = dplyr::if_else(is.na(TIME_SINCE_FIRE), NA, FIRE_NO),
+    TIME_SINCE_FIRE_CATE = case_when(
+      is.na(TIME_SINCE_FIRE) ~ "5. Unburnt",
+      TIME_SINCE_FIRE < 4 ~ "1. Recent",
+      TIME_SINCE_FIRE < 10 ~ "2. Early",
+      TIME_SINCE_FIRE < 34 ~ "3. Medium",
+      TRUE ~ "4. Long"
+    )
+  )
+
+vba_sbb_parkres_fire |> 
+  st_drop_geometry() |>
+  group_by(TIME_SINCE_FIRE_CATE) |> 
+  summarise(COUNT_SIGHTING = n()) |> 
+  ggplot(aes(x = TIME_SINCE_FIRE_CATE, y = COUNT_SIGHTING)) +
+  geom_col()
+
+vba_sbb_parkres_fire |> 
+  st_drop_geometry() |> 
+  # filter(!is.na(TIME_SINCE_FIRE)) |> 
+  # mutate(TIME_SINCE_FIRE_BIN = cut_interval(TIME_SINCE_FIRE, 
+  #                                           length = 10)) |>
+  # select(TIME_SINCE_FIRE, TIME_SINCE_FIRE_BIN)
+  filter(TIME_SINCE_FIRE_CATE == "3. Medium") |>
+  group_by(START_YEAR, TIME_SINCE_FIRE) |> 
+  summarise(COUNT_SIGHTING = n()) |> 
+  ggplot(aes(x = START_YEAR, y = COUNT_SIGHTING)) +
+  geom_line(aes(color = as.factor(TIME_SINCE_FIRE)))
+```
+
+

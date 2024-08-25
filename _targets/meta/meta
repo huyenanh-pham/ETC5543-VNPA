@@ -1,0 +1,14 @@
+name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iteration|parent|children|seconds|warnings|error
+ala_sbb_raw|stem|b3266548a7025c1f|08fa57549f05f3bb|b0bd8fee30ce4299|2050884338||t19960.2466743714s|7b2c745f4d11ed04|293067|rds|local|vector|||10.83|package tidyr was built under R version 4.3.3. package stringr was built under R version 4.3.3|
+crs_GDA2020|stem|1c347150748b4b19|969545d2db7cf525|5aa1e47d72a545aa|-1998379723||t19960.2021115396s|48e6b4848e5efe02|550|rds|local|vector|||0||
+filepath|stem|fdc17529b8c0ab72|86b3529001740161|2c530c1562a7fbd1|520339606||t19955.0339905604s|7e27f214bb439162|374|rds|local|vector|||1.61|package tidyr was built under R version 4.3.3. package stringr was built under R version 4.3.3|
+fire_history|stem|727cb5de6f0dee57|ebdab71602ecdce6|8f8428d97da98a48|-59018930||t19955.0351078742s|fc7e54519aeff388|695810992|rds|local|vector|||32.16||
+get_ala_data|function|8b126af9de0b999b|||||||||||||||
+parkres|stem|c5bab485f8ba57af|41c2b1a071ef2749|8f8428d97da98a48|-2139326057||t19955.0340046302s|d06234d25f5f169c|12564172|rds|local|vector|||0.28||
+vba_fauna|stem|be51cd75cd61d5dd|b17cff74b2bf589d|ac3f1b8fc7c7706a|-567859376||t19952.1014057428s|2d5f0969c2cea589|307468475|rds|local|vector|||7.4||
+vba_fauna_filepaths|stem|5dbde7c7dae7ff37|a545e67091f33dac|2c530c1562a7fbd1|-325423906||t19947.2959089805s|87fddfa2a4a78bf2|213|rds|local|vector|||2.14|package tidyr was built under R version 4.3.3. package stringr was built under R version 4.3.3|
+vba_fauna_listOfShp|stem|f48c762d4c55def7|3e11f9699d354c0a|3e4eb307453a06c5|488361920||t19952.099662199s|c2571c22d6964136|307544191|rds|local|vector|||176.36||
+vba_fauna_sbb|stem|64a2ef7e0c782a12|4191349071520f06|26a73e2e2cd59992|-1597706333||t19955.0353377294s|cc7818b2cf91f4f6|298044|rds|local|vector|||0.03||
+vba_fauna1|stem||48678182d2a5a8cd|2c530c1562a7fbd1|1235406530||t19947.2959091991s||0|rds|local|vector|||0.78|package tidyr was built under R version 4.3.3. package stringr was built under R version 4.3.3|dsn should specify a data source or filename
+vic_map|stem|e793a10594ba009b|806d8355fcf19887|2c530c1562a7fbd1|-1829561900||t19951.6334915732s|cd04c379e198efdc|8755576|rds|local|vector|||2.14|package tidyr was built under R version 4.3.3. package stringr was built under R version 4.3.3|
+vnpa_bunyip_site|stem|bf61d80c1c19efdd|1d263677b57b8ae5|2c530c1562a7fbd1|-46192957||t19947.2034010939s|bb26bd16a3eb99ed|2843|rds|local|vector|||1.14|package tidyr was built under R version 4.3.3. package stringr was built under R version 4.3.3|

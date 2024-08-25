@@ -551,6 +551,33 @@
       ],
       "Hash": "15aeb8c27f5ea5161f9f6a641fafd93a"
     },
+    "galah": {
+      "Package": "galah",
+      "Version": "2.0.2",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "cli",
+        "crayon",
+        "dplyr",
+        "glue",
+        "httr2",
+        "jsonlite",
+        "lifecycle",
+        "potions",
+        "purrr",
+        "readr",
+        "rlang",
+        "sf",
+        "stringr",
+        "tibble",
+        "tidyr",
+        "tidyselect",
+        "utils"
+      ],
+      "Hash": "6cfec3f9861e3c9b3a46f4a83e2a2eb2"
+    },
     "gargle": {
       "Package": "gargle",
       "Version": "1.5.2",
@@ -775,6 +802,27 @@
       ],
       "Hash": "ac107251d9d9fd72f0ca8049988f1d7f"
     },
+    "httr2": {
+      "Package": "httr2",
+      "Version": "1.0.2",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "R6",
+        "cli",
+        "curl",
+        "glue",
+        "lifecycle",
+        "magrittr",
+        "openssl",
+        "rappdirs",
+        "rlang",
+        "vctrs",
+        "withr"
+      ],
+      "Hash": "320c8fe23fcb25a6690ef7bdb6a3a705"
+    },
     "ids": {
       "Package": "ids",
       "Version": "1.0.1",
@@ -917,6 +965,21 @@
       ],
       "Hash": "b8552d117e1b808b09a832f589b79035"
     },
+    "lobstr": {
+      "Package": "lobstr",
+      "Version": "1.1.2",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "cpp11",
+        "crayon",
+        "methods",
+        "prettyunits",
+        "rlang"
+      ],
+      "Hash": "f2a94f8fc9db382a642e965339635ad6"
+    },
     "lubridate": {
       "Package": "lubridate",
       "Version": "1.9.3",
@@ -1057,6 +1120,23 @@
         "utils"
       ],
       "Hash": "01f28d4278f15c76cddbea05899c5d6f"
+    },
+    "potions": {
+      "Package": "potions",
+      "Version": "0.2.0",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "jsonlite",
+        "lobstr",
+        "purrr",
+        "rlang",
+        "rrapply",
+        "stringi",
+        "yaml"
+      ],
+      "Hash": "4cd43233a0283928c1966075a8fc1c59"
     },
     "prettyunits": {
       "Package": "prettyunits",
@@ -1284,6 +1364,16 @@
         "R"
       ],
       "Hash": "4c8415e0ec1e29f3f4f6fc108bef0144"
+    },
+    "rrapply": {
+      "Package": "rrapply",
+      "Version": "1.2.7",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "1b88b4380c6cb263280c39f179863003"
     },
     "rstudioapi": {
       "Package": "rstudioapi",
