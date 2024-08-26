@@ -47,32 +47,37 @@ list(
   
   # Filepath
   tar_target(filepath,
-  rbind(
-    data.frame(
-      name = c("fire_history"), 
-      path = c(here::here("raw-data/Order_EHPYIY/ll_gda2020/esrishape/whole_of_dataset/victoria/FIRE/FIRE_HISTORY.shp"))),
-    data.frame(
-      name = c("parkres"), 
-      path = c(here::here("raw-data/Order_CORKDM/ll_gda2020/esrishape/whole_of_dataset/victoria/CROWNLAND/PARKRES.shp"))),
-    data.frame(
-      name = c("vba_fauna"), 
-      path = c(here::here("raw-data/Order_7JR9NQ/ll_gda2020/esrishape/whole_of_dataset/victoria/FLORAFAUNA1/VBA_FAUNA25.shp"))),
-    data.frame(
-      name = c("vba_fauna"), 
-      path = c(here::here("raw-data/Order_7JR9NQ/ll_gda2020/esrishape/whole_of_dataset/victoria/FLORAFAUNA1/VBA_FAUNA25_1.shp"))))
+    c(
+      "fire_history" = here::here("raw-data/FIRE_HISTORY_GDA2020/FIRE_HISTORY.shp"), 
+      "parkres" = here::here("raw-data/PARKRES_GDA2020/PARKRES.shp"),
+      "evc" = here::here("raw-data/EVC_GDA2020/NV2005_EVCBCS.shp"),
+      "vba_fauna" = here::here("raw-data/Order_7JR9NQ/ll_gda2020/esrishape/whole_of_dataset/victoria/FLORAFAUNA1/VBA_FAUNA25.shp"),
+      "vba_fauna" = here::here("raw-data/Order_7JR9NQ/ll_gda2020/esrishape/whole_of_dataset/victoria/FLORAFAUNA1/VBA_FAUNA25_1.shp")
+     ),
+    format = "file"        
   ),
   
-  # Fire History
+  # [1] Fire History
   tar_target(fire_history,
-    sf::read_sf(filepath[filepath$name == "fire_history", "path"])
+    sf::read_sf(filepath[1]) |>
+      select("FIRETYPE", "SEASON", "FIRE_NO", "NAME", "STRTDATIT", "FIRE_SVRTY", "FIREKEY", "ACCURACY", "DSE_ID", "CFA_ID", "geometry") |> 
+      rename(START_DATE = STRTDATIT, 
+             FIRE_NAME = NAME,
+             FIRE_SEASON = SEASON) |> 
+      mutate(START_DATE = lubridate::ymd(START_DATE))
   ),
-  # Park boundaries
+  # [2] Park boundaries
   tar_target(parkres,
-    sf::read_sf(filepath[filepath$name == "parkres", "path"])
+    sf::read_sf(filepath[2])
+  ),
+  # [3] EVC
+  tar_target(evc,
+    sf::read_sf(filepath[3]) |>
+    select("EVC", "EVCBCSDESC", "BIOREGION", "EVC_CODE", "X_EVCNAME", "XGROUPNAME", "XSUBGGROUP", "geometry")
   ),
   
   
-  # # Process data 
+  # Process data 
   tar_target(vba_fauna_sbb,
              vba_fauna |> filter(TAXON_ID == 61092))
   

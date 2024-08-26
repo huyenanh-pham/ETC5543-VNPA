@@ -1,5 +1,5 @@
 ---
-title: "EDA on Southern Brown Bandicoot sightings in Victoria"
+title: "`EDA on Southern Brown Bandicoot sightings in Victoria`"
 format:
   html:
     embed-resources: true
@@ -27,10 +27,7 @@ rm(lib)
 tar_load(ala_sbb_raw)
 
 # 1.2 VBA
-vba_fauna_sbb <- tar_read(vba_fauna) |> 
-  filter(TAXON_ID == 61092 # "Southern Brown Bandicoot"
-         # & START_YEAR >= 2010
-         ) 
+tar_load(vba_fauna_sbb)
 
 # Parks boundary ---------------------------------------------------------------
 tar_load(parkres)
@@ -38,6 +35,55 @@ bbox_bunyip <- st_bbox(parkres |> filter(NAME == "Bunyip State Park"))
 
 # Victoria map SA2
 tar_load(vic_map)
+```
+
+# Process Data 
+
+```{r}
+# VBA_SBB sighting within parkres areas 
+vba_sbb_parkres <- st_join(vba_fauna_sbb, parkres[,"NAME"], 
+                           join = st_within, left = FALSE) |> # inner join 
+  dplyr::filter(START_YEAR > 1999) |> 
+  dplyr::rename(PARKRES_NAME = NAME)
+
+# Select fire POLYONS contains sighting POINTS
+# tar_load(fire_history)
+fire_history_subset <- tar_read(fire_history)[vba_sbb_parkres,] # fire_history[vba_sbb_parkres,]
+
+# Select evc POLYONS contains sighting POINTS
+evc_subset <- tar_read(evc)[vba_sbb_parkres,] # evc[vba_sbb_parkres,]
+
+vba_sbb_full <-
+  vba_sbb_parkres |> 
+ # Join sightings (within parkres) with fire history 
+  st_join(fire_history_subset[, c("FIRETYPE", "FIRE_SEASON", "FIRE_NO", "FIRE_SVRTY")],
+          join = st_within, left = TRUE) |> 
+ # Join with EVC 
+  st_join(evc_subset[, c("EVC", "XGROUPNAME")],
+          join = st_within, left = TRUE) |> 
+  rename(FIRE_TYPE = FIRETYPE,
+         FIRE_SEVERITY = FIRE_SVRTY,
+         EVC_GROUPNAME = XGROUPNAME) |> 
+ # Get the latest fire of each sighting
+  arrange(RECORD_ID, desc(FIRE_SEASON), desc(FIRE_NO)) |> 
+  group_by(RECORD_ID) |>
+  dplyr::slice_head(n=1) |>
+ # Add and mutate columns
+  dplyr::mutate(
+    FIRE_AGE = 
+      dplyr::if_else(START_YEAR - FIRE_SEASON < 0, NA, START_YEAR - FIRE_SEASON),
+    FIRE_TYPE = dplyr::if_else(is.na(FIRE_AGE), NA, FIRE_TYPE),
+    FIRE_SEASON = dplyr::if_else(is.na(FIRE_AGE), NA, FIRE_SEASON),
+    FIRE_NO = dplyr::if_else(is.na(FIRE_AGE), NA, FIRE_NO),
+    FIRE_AGE_CATE = case_when(
+      is.na(FIRE_AGE) ~ "5. Unburnt",
+      FIRE_AGE < 4 ~ "1. Recent",
+      FIRE_AGE < 10 ~ "2. Early",
+      FIRE_AGE < 34 ~ "3. Medium",
+      TRUE ~ "4. Long"
+    )
+  )
+
 ```
 
 # Data sources: ALA v. VBA
@@ -127,12 +173,6 @@ ala_sbb_parkres |> st_drop_geometry() |>
 
 
 ```{r}
-# VBA_SBB sighting within parkres areas 
-vba_sbb_parkres <- st_join(vba_fauna_sbb, parkres[,"NAME"], 
-                           join = st_within, left = FALSE) |> # inner join 
-  filter(START_YEAR > 1999) |> 
-  rename(PARKRES_NAME = NAME)
-  
 # Spatial distribution 
 ggplot() +
   geom_sf(data = vic_map) + 
@@ -186,60 +226,106 @@ tm_shape(vic_map, bbox = bbox_bunyip) + # Zoom in with bbox
 # Fire history 
 
 ```{r}
-# Select fire POLYONS contains sighting POINTS
-# tar_load(fire_history)
-fire_history_subset <- fire_history[vba_sbb_parkres,]
-
-ggplot() +
-  geom_sf(data = vic_map) + 
-  geom_sf(data = fire_history_subset, fill=alpha("darkred",0.5)) + 
-  geom_sf(data = vba_sbb_parkres, 
-          color = "tan1", size = 1)
-
-# Join sightings with fire history 
-vba_sbb_parkres_fire <-
-  st_join(vba_sbb_parkres,
-          fire_history_subset[, c("FIRETYPE", "SEASON", "FIRE_NO")],
-          join = st_within, left = TRUE) |> 
-  rename(FIRE_TYPE = FIRETYPE, FIRE_SEASON = SEASON) |> 
-  # filter(START_YEAR >= FIRE_SEASON | is.na(FIRE_SEASON)) |> # sighting_date > fire SEASON (year)
-  # Get the latest fire of each sighting
-  arrange(RECORD_ID, desc(FIRE_SEASON), desc(FIRE_NO)) |> 
-  group_by(RECORD_ID) |>
-  dplyr::slice_head(n=1) |> 
-  dplyr::mutate(
-    TIME_SINCE_FIRE = 
-      dplyr::if_else(START_YEAR - FIRE_SEASON < 0, NA, START_YEAR - FIRE_SEASON),
-    FIRE_TYPE = dplyr::if_else(is.na(TIME_SINCE_FIRE), NA, FIRE_TYPE),
-    FIRE_SEASON = dplyr::if_else(is.na(TIME_SINCE_FIRE), NA, FIRE_SEASON),
-    FIRE_NO = dplyr::if_else(is.na(TIME_SINCE_FIRE), NA, FIRE_NO),
-    TIME_SINCE_FIRE_CATE = case_when(
-      is.na(TIME_SINCE_FIRE) ~ "5. Unburnt",
-      TIME_SINCE_FIRE < 4 ~ "1. Recent",
-      TIME_SINCE_FIRE < 10 ~ "2. Early",
-      TIME_SINCE_FIRE < 34 ~ "3. Medium",
-      TRUE ~ "4. Long"
-    )
-  )
-
-vba_sbb_parkres_fire |> 
+vba_sbb_full |> 
   st_drop_geometry() |>
-  group_by(TIME_SINCE_FIRE_CATE) |> 
+  group_by(FIRE_AGE_CATE,START_YEAR) |> 
   summarise(COUNT_SIGHTING = n()) |> 
-  ggplot(aes(x = TIME_SINCE_FIRE_CATE, y = COUNT_SIGHTING)) +
-  geom_col()
-
-vba_sbb_parkres_fire |> 
-  st_drop_geometry() |> 
-  # filter(!is.na(TIME_SINCE_FIRE)) |> 
-  # mutate(TIME_SINCE_FIRE_BIN = cut_interval(TIME_SINCE_FIRE, 
-  #                                           length = 10)) |>
-  # select(TIME_SINCE_FIRE, TIME_SINCE_FIRE_BIN)
-  filter(TIME_SINCE_FIRE_CATE == "3. Medium") |>
-  group_by(START_YEAR, TIME_SINCE_FIRE) |> 
-  summarise(COUNT_SIGHTING = n()) |> 
-  ggplot(aes(x = START_YEAR, y = COUNT_SIGHTING)) +
-  geom_line(aes(color = as.factor(TIME_SINCE_FIRE)))
+  ggplot(aes(x = FIRE_AGE_CATE, y = COUNT_SIGHTING)) +
+  geom_col() +
+  facet_wrap(~START_YEAR)
 ```
 
+
+```{r}
+vba_sbb_full |> 
+  st_drop_geometry() |> 
+  # filter(!is.na(FIRE_AGE)) |> 
+  filter(FIRE_AGE_CATE == "3. Medium") |> 
+  mutate(FIRE_AGE_BIN = cut(FIRE_AGE, breaks = c(seq(10,34,by=3)), include.lowest = TRUE, right = FALSE)) |>
+  # select(FIRE_AGE,FIRE_AGE_BIN) |> arrange(FIRE_AGE) |> 
+  group_by(START_YEAR, FIRE_AGE_BIN) |> 
+  summarise(COUNT_SIGHTING = n()) |> 
+  ggplot(aes(x = START_YEAR, y = COUNT_SIGHTING)) +
+  geom_line(aes(color = FIRE_AGE_BIN))
+```
+
+# EVC
+
+```{r}
+vba_sbb_full |> 
+  st_drop_geometry() |> 
+  group_by(START_YEAR, EVC_GROUPNAME) |> 
+  summarise(COUNT_SIGHTING = n()) |> 
+  ggplot(aes(x = START_YEAR, y = COUNT_SIGHTING)) +
+  geom_col() +
+  facet_wrap(~EVC_GROUPNAME)
+
+# Plot
+# ggplot() +
+#   geom_sf(data = vic_map) +
+#   # geom_sf(data = parkres, fill=alpha("limegreen",0.5)) +
+#   geom_sf(
+#     data =
+#       vba_sbb_full |>
+#       filter(START_YEAR > 2020 
+#              & EVC_GROUPNAME %in% c("Heathlands")),
+#     color = "maroon",
+#     size = 1
+#   ) 
+```
+
+```{r}
+vba_sbb_full |> 
+  st_drop_geometry() |> 
+  group_by(FIRE_AGE_CATE, EVC_GROUPNAME) |> 
+  summarise(COUNT_SIGHTING = n()) |> 
+  ggplot(aes(x = FIRE_AGE_CATE, y = COUNT_SIGHTING)) +
+  geom_col() +
+  facet_wrap(~EVC_GROUPNAME) +
+  labs(title = "Sighting count by Fire Age Category for each EVC")
+```
+
+```{r}
+vba_sbb_full |> 
+  st_drop_geometry() |> 
+  group_by(START_YEAR, FIRE_AGE_CATE, EVC_GROUPNAME) |> 
+  summarise(COUNT_SIGHTING = n()) |> 
+  filter(EVC_GROUPNAME == "Lowland Forests") |>
+  ggplot() +
+  geom_col(aes(x = START_YEAR, y = COUNT_SIGHTING, fill = FIRE_AGE_CATE), position = "dodge") +
+  facet_wrap(~FIRE_AGE_CATE, ncol=1) +
+  labs(title = "Lowland Forests: Sighting count by Fire Age Category")
+```
+```{r}
+vba_sbb_full |> 
+  st_drop_geometry() |> 
+  group_by(START_YEAR, EVC_GROUPNAME, FIRE_AGE_CATE) |> 
+  summarise(COUNT_SIGHTING = n()) |> 
+  group_by(START_YEAR, EVC_GROUPNAME) |> 
+  mutate(COUNT_SIGHTING_CPT = round(COUNT_SIGHTING/sum(COUNT_SIGHTING),4)) |> 
+  filter(EVC_GROUPNAME %in% c("Lowland Forests","Heathy Woodlands","Heathlands")) |>
+  ggplot() +
+  geom_col(aes(x = START_YEAR, y = COUNT_SIGHTING_CPT, fill = FIRE_AGE_CATE)) +
+  theme(legend.position = "top") +
+  facet_wrap(~EVC_GROUPNAME, ncol=1) +
+  labs(title = "How may % of yearly sightings are Recent?", 
+       subtitle = "3 main ECVs: Heathlands, Heathy Woodlands, Lowland Forests")
+```
+- Declining occurrence in Unburnt areas  
+- Increase in sightings in Recent and Early areas  
+
+# Fire severity 
+
+```{r}
+vba_sbb_full |> 
+  st_drop_geometry() |> 
+  group_by(FIRE_SEVERITY, START_YEAR) |> 
+  summarise(COUNT_SIGHTING = n()) |> 
+  ggplot(aes(x = START_YEAR, y = COUNT_SIGHTING)) +
+  geom_col() +
+  facet_wrap(~FIRE_SEVERITY)
+```
+
+```{r}
+```
 
