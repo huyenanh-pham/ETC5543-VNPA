@@ -55,15 +55,7 @@ Heathy Woodland and Lowland Forest are the main EVCs in Bunyip.
 [Victorian Biodiversity Atlas fauna records (unrestricted) for sites with high spatial accuracy](https://discover.data.vic.gov.au/dataset/victorian-biodiversity-atlas-fauna-records-unrestricted-for-sites-with-high-spatial-accuracy)
 - VNPA internal surveyed data   
 
-<!-- Mammal species sightings data   -->
-<!-- - Which sighting data sources (VBA or ALA)?  -->
-<!-- VBA Fauna: Victorian Biodiversity Atlas (VBA)   -->
-<!-- - Only include RELIABILTY = (Acceptable, Confirmed) while some records submitted by VNPA (since ~2021) stays in REALIBILITY = (Unverified) -->
 
-<!-- Get all records submitted by VNPA to VBA   -->
-<!-- (https://vba.biodiversity.vic.gov.au/vba/index.jsp) -->
-<!-- Advanced Filter: Fields: Organisation > Select "Victorian Biodiversity Atlas" -->
-<!-- Selected Area: All Victorian Sites > Export  -->
 
 2. Fire history   
 [Fire History Records of Fires across Victoria](https://discover.data.vic.gov.au/dataset/fire-history-records-of-fires-across-victoria)
