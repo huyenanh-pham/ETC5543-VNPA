@@ -17,7 +17,7 @@ tar_option_set(packages = c("utils","tidyverse","sf","galah"))
 
 # End this file with a list of target objects.
 list(
-  # Load data 
+  # Load data ------------------------------------------------------------------
   tar_target(vic_map, sf::read_sf(
     here::here("data/SA2_2021_AUST_SHP_GDA2020/SA2_2021_AUST_GDA2020.shp")) |>
     filter(STE_CODE21 == 2 & !is.na(AREASQKM21)) # STE_NAME21 == "Victoria" 
@@ -61,6 +61,7 @@ list(
   tar_target(fire_history,
     sf::read_sf(filepath[1]) |>
       select("FIRETYPE", "SEASON", "FIRE_NO", "NAME", "STRTDATIT", "FIRE_SVRTY", "FIREKEY", "ACCURACY", "DSE_ID", "CFA_ID", "geometry") |> 
+      filter(SEASON > 1969) |> 
       rename(START_DATE = STRTDATIT, 
              FIRE_NAME = NAME,
              FIRE_SEASON = SEASON) |> 
@@ -76,9 +77,44 @@ list(
     select("EVC", "EVCBCSDESC", "BIOREGION", "EVC_CODE", "X_EVCNAME", "XGROUPNAME", "XSUBGGROUP", "geometry")
   ),
   
-  
-  # Process data 
+  # Subset data ----------------------------------------------------------------
   tar_target(vba_fauna_sbb,
-             vba_fauna |> filter(TAXON_ID == 61092))
+             vba_fauna |> filter(TAXON_ID == 61092)),
   
-  )
+  ### LAF -----
+  tar_target(fire_history_1920,
+             fire_history |>
+               filter(FIRE_SEASON == 2020 & 
+                        between(START_DATE,
+                                lubridate::ymd("2019-11-01"),
+                                lubridate::ymd("2020-05-31")))
+  ),
+  # Victorian Fires 2019-2020 (November 2019 until February 2020)
+  # [FFM VIC - Past bushfires](https://www.ffm.vic.gov.au/history-and-incidents/past-bushfires)
+  # [Victorian Fires 2019-2020 Map](https://www.ffm.vic.gov.au/__data/assets/pdf_file/0022/500728/Victorian_fires_fire_area_end1920_Victorian-Fires.pdf)
+  
+  tar_target(poly_fire_1920,
+             sf::st_union(fire_history_1920$geometry, by_feature = FALSE)
+             ),
+  tar_target(poly_laf ,
+             sf::st_multipoint(c(
+               st_point(c(147.4, -37.8)), # p1
+               st_point(c(148.9, -37.8)), # p2 
+               st_point(c(148.9, -37.2)), # p3 
+               st_point(c(147.4, -37.2))  # p4
+             )) %>%
+               st_cast("POLYGON") %>%
+               st_sfc(crs = st_crs(vic_map))
+             ),
+  tar_target(ala_laf,
+             get_ala_data_speciesGroup()
+             ),
+  tar_target(fire_history_laf, 
+             sf::st_intersection(fire_history, poly_laf) |> 
+               filter(FIRE_SEASON >= 1970)
+             ),
+  tar_target(evc_laf,
+             sf::st_intersection(evc, poly_laf)
+             )
+  
+)

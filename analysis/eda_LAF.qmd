@@ -1,0 +1,162 @@
+---
+title: "Biodiversity in Gippsland: before and after the megafires 2019-20"
+subtitle: "VNPA Life After Fire (LAF) Project" 
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 2
+editor: source
+execute:
+  echo: false
+  message: false
+  warning: false
+---
+
+```{r library}
+# Library
+lib <- c("targets","tidyverse","sf","galah","tmap","leaflet","plotly")
+invisible(lapply(lib, library, character.only = TRUE))
+rm(lib)
+```
+
+```{r}
+tar_load(vic_map)
+tar_load(parkres) 
+tar_load(fire_history_1920) 
+tar_load(ala_laf) 
+tar_load(fire_history_laf) 
+tar_load(evc_laf) 
+```
+
+# The megafire in 2019-2020
+
+```{r}
+# Define bounding box
+bbox_fire_1920 <-
+  st_bbox(
+    c(
+      xmin = 146.3000,
+      xmax = sf::st_bbox(poly_fire_1920)[["xmax"]],
+      ymin = sf::st_bbox(poly_fire_1920)[["ymin"]],
+      ymax = -35.3
+    ),
+    crs = st_crs(vic_map)
+  )
+bbox_laf <-
+  st_bbox(
+    c(
+      xmin = 147.4,
+      xmax = 148.9,
+      ymin = -37.8,
+      ymax = -37.2
+    ),
+    crs = st_crs(vic_map)
+  )
+poly_laf <- st_multipoint(
+    c(
+      st_point(c(147.4, -37.8)), # p1
+      st_point(c(148.9, -37.8)), # p2 
+      st_point(c(148.9, -37.2)), # p3 
+      st_point(c(147.4, -37.2))  # p4
+    )
+  ) %>%
+  st_cast("POLYGON") %>%
+  st_sfc(crs = st_crs(vic_map))
+
+# Plot megafires 2019-20 extension
+ggplot() + 
+  geom_sf(data = vic_map) +
+  geom_sf(data = poly_fire_1920, fill = alpha("darkred",0.4)) +
+  geom_sf(data = parkres, fill = alpha("limegreen",0.4)) + 
+  geom_sf(data = poly_laf, fill = "transparent", col = "orange", linewidth = 2) + 
+  coord_sf(xlim = bbox_fire_1920[c("xmin", "xmax")], ylim = bbox_fire_1920[c("ymin", "ymax")]) + # Zoom
+  theme_bw()
+```
+
+```{r}
+# Plot
+ggplot() + 
+  geom_sf(data = vic_map) +
+  geom_sf(data = fire_history_laf, fill = alpha("darkred",0.4)) + 
+  coord_sf(xlim = bbox_laf[c("xmin", "xmax")], ylim = bbox_laf[c("ymin", "ymax")]) + # Zoom
+  theme_bw() +
+  labs(title = "Fire History in LAF since 1970")
+```
+
+```{r}
+unique(evc_laf$XGROUPNAME) |> sort()
+```
+```{r}
+#| label: process-data
+
+# Fire Severity Classification 
+fire_history_1920 <- fire_history_1920 |>
+  dplyr::mutate(
+    FIRE_SEVERITY_LEVEL = case_when(
+      FIRE_SVRTY %in% c("BURNT_1") ~ 5, # Black
+      FIRE_SVRTY %in% c("BURNT_2F", "BURNT_2P") ~ 4, # Brown
+      FIRE_SVRTY == "BURNT_3" ~ 3, # Green
+      FIRE_SVRTY %in% c("BURNT_NONFOREST", "BURNT_UNKNOWN") ~ 2, # non-forest, unclassified
+      TRUE ~ NA
+    )
+  ) |> 
+  rename(FIRE_TYPE = FIRETYPE,
+         FIRE_START_DATE = START_DATE,
+         FIRE_SEVERITY = FIRE_SVRTY)
+
+# CONVERT TO SF OBJECT
+ala_laf <- ala_laf |> 
+  sf::st_as_sf(coords = c("decimalLongitude", "decimalLatitude"),
+               crs = st_crs(vic_map)) 
+
+# JOIN
+ala_laf_full <-
+  ala_laf |>
+    mutate(BEFORE_AFTER_FIRE = ifelse(eventDate < "2019-11-01", "before", "after")) |>
+    # Join sightings with EVC
+    st_join(evc_laf[, c("XGROUPNAME")], join = st_within, left = TRUE) |> 
+   # Join sightings with fire history
+  st_join(fire_history_laf[, c("FIRE_TYPE", "FIRE_SEASON", "FIRE_START_DATE", "FIRE_NO", "FIRE_SEVERITY_LEVEL")],
+          join = st_within, left = TRUE) |> 
+   # Get the latest fire of each sighting
+  arrange(recordID, desc(FIRE_SEASON), desc(FIRE_NO)) |>
+  group_by(recordID) |>
+  dplyr::slice_head(n=1) |>
+  rename(EVC_GROUPNAME = XGROUPNAME)
+
+# |> 
+  # Add and mutate columns
+  dplyr::mutate(
+    TIME_SINCE_FIRE =
+      case_when(
+        is.na(FIRE_START_DATE) ~ NA,
+        eventDate - FIRE_START_DATE < 0 ~ NA,
+        TRUE ~ eventDate - FIRE_START_DATE
+      )
+  ) 
+
+# ala_laf_full_2 |> st_drop_geometry() |> head(100) |> 
+```
+
+
+```{r}
+# Plot
+ggplot() + 
+  geom_sf(data = vic_map, aes(fill = "transparent")) +
+  geom_sf(data = ala_laf_full, 
+          aes(color = EVC_GROUPNAME, alpha = 0.5)) + 
+  coord_sf(xlim = bbox_laf[c("xmin", "xmax")], ylim = bbox_laf[c("ymin", "ymax")]) + # Zoom
+  facet_wrap(~before_after_fire) +
+  theme_bw() +
+  theme(legend.position = "bottom") + 
+  labs(title = "Vegetation class (EVC) in Gippsland")
+```
+```{r}
+ 
+
+fire_history_1920  |> st_drop_geometry() |>
+  group_by(FIRE_SVRTY) |>
+  summarise(n = n())
+```
+
