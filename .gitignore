@@ -47,6 +47,7 @@ rsconnect/
 
 # Raw data folder
 raw-data/
+document/
 
 .rda
 /.quarto/
