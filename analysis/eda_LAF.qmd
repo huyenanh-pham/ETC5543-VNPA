@@ -63,7 +63,9 @@ poly_laf <- st_multipoint(
   ) %>%
   st_cast("POLYGON") %>%
   st_sfc(crs = st_crs(vic_map))
+```
 
+```{r}
 # Plot megafires 2019-20 extension
 ggplot() + 
   geom_sf(data = vic_map) +
@@ -73,6 +75,7 @@ ggplot() +
   coord_sf(xlim = bbox_fire_1920[c("xmin", "xmax")], ylim = bbox_fire_1920[c("ymin", "ymax")]) + # Zoom
   theme_bw()
 ```
+
 
 ```{r}
 # Plot
@@ -153,8 +156,6 @@ ggplot() +
   labs(title = "Vegetation class (EVC) in Gippsland")
 ```
 ```{r}
- 
-
 fire_history_1920  |> st_drop_geometry() |>
   group_by(FIRE_SVRTY) |>
   summarise(n = n())

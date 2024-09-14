@@ -82,12 +82,12 @@ list(
              vba_fauna |> filter(TAXON_ID == 61092)),
   
   ### LAF -----
-  tar_target(fire_history_1920,
-             fire_history |>
-               filter(FIRE_SEASON == 2020 & 
-                        between(START_DATE,
-                                lubridate::ymd("2019-11-01"),
-                                lubridate::ymd("2020-05-31")))
+  tar_target(fire_history_1920, fire_history |>
+               filter(between(
+                 START_DATE,
+                 lubridate::ymd("2019-11-21"), # Fire Start Date
+                 lubridate::ymd("2020-02-29")  # Fire End Date
+               ))
   ),
   # Victorian Fires 2019-2020 (November 2019 until February 2020)
   # [FFM VIC - Past bushfires](https://www.ffm.vic.gov.au/history-and-incidents/past-bushfires)

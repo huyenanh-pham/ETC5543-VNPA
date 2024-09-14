@@ -1,0 +1,228 @@
+
+
+@report{DELWPFire,
+  author       = {Department of Environment, Land, Water and Planning, Victoria},
+  title        = {Ecosystem Services from Forests in Victoria: Impact of the 2019–20 Bushfires},
+  institution  = {Victorian Government},
+  year         = {2020},
+}
+
+  % Species Richness
+@incollection{MOORE2013648,
+title = {Diversity, Taxonomic versus Functional},
+editor = {Simon A Levin},
+booktitle = {Encyclopedia of Biodiversity (Second Edition)},
+publisher = {Academic Press},
+edition = {Second Edition},
+address = {Waltham},
+pages = {648-656},
+year = {2013},
+isbn = {978-0-12-384720-1},
+doi = {https://doi.org/10.1016/B978-0-12-384719-5.00036-8},
+url = {https://www.sciencedirect.com/science/article/pii/B9780123847195000368},
+author = {John C. Moore},
+keywords = {Biodiversity, Biogeography, C3 plants, C4 plants, Functional diversity, Mutualism, Phylogeny, Species, Stability, Taxonomy, Transient dynamics},
+abstract = {Taxonomic diversity refers to the number and the relative abundance of species in a community. Functional diversity refers to the different types of processes in a community that are important to its structure and dynamic stability. Taxonomic and functional diversity have been presented as being different and, as the title implies, competing approaches to the study of biodiversity. This article will provide specific examples of how taxonomic and functional diversity are interrelated and how information from both perspectives can be used to estimate biodiversity and propose mechanisms that govern biodiversity.}
+}
+
+% ------------------------------------------------------------------------------
+% DATA
+
+% DATA A
+@misc{ALA,
+  author = {ALA},
+  year = {2024},
+  title = {Atlas of Living Australia - Occurrence record data in Gippsland},
+  doi = {10.26197/ala.6e0ccfe2-802a-499f-a8d5-2e6f40ce0364},
+  howpublished= {\url{https://doi.org/10.26197/ala.6e0ccfe2-802a-499f-a8d5-2e6f40ce0364}}
+}
+
+% DATA B
+@misc{DELWPFireData,
+  author       = {Department of Environment, Land, Water and Planning, Victoria},
+  title        = {Fire History Overlay of Most Recent Fires},
+  url          = {https://discover.data.vic.gov.au/dataset/fire-history-overlay-of-most-recent-fires},
+  note         = {Accessed: Sep 2024},
+}
+
+% DATA Supplementary
+  
+@misc{ABSVicMap,
+  author = {Australian Bureau of Statistics},
+  title = {Digital boundary files [Internet]},
+  publisher = {ABS},
+  address = {Canberra},
+  year = {2021-2026},
+  month = jul,
+  url = {https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files}, 
+  note = "[cited 2024 September 10]"
+}
+
+@dataset{DEECA_PARKRES,
+  author = {Department of Energy, Environment and Climate Action},
+  title = {Parks and Conservation Reserves},
+  url = {https://discover.data.vic.gov.au/dataset/parks-and-conservation-reserves-parkres}, 
+  year = {2024},
+  urldate = {2024-09}
+}
+
+% ------------------------------------------------------------------------------
+% TOOLS
+@Manual{Rlang,
+    title = {R: A Language and Environment for Statistical Computing},
+    author = {R Core Team},
+    organization = {R Foundation for Statistical Computing},
+    address = {Vienna, Austria},
+    year = {2024},
+    url = {https://www.R-project.org/},
+  }
+
+@Manual{RStudio,
+    title = {RStudio: Integrated Development Environment for R},
+    author = {Posit team},
+    organization = {Posit Software, PBC},
+    address = {Boston, MA},
+    year = {2024},
+    url = {http://www.posit.co/},
+  }
+  
+% ------------------------------------------------------------------------------
+% PACKAGE
+
+@Manual{galah,
+  title = {galah: Biodiversity Data from the GBIF Node Network},
+  author = {Martin Westgate and Matilda Stevenson and Dax Kellie and Peggy Newman},
+  year = {2024},
+  note = {R package version 2.0.2},
+  url = {https://CRAN.R-project.org/package=galah},
+}
+
+@Article{tidyverse,
+  title = {Welcome to the {tidyverse}},
+  author = {Hadley Wickham and Mara Averick and Jennifer Bryan and Winston Chang and Lucy D'Agostino McGowan and Romain François and Garrett Grolemund and Alex Hayes and Lionel Henry and Jim Hester and Max Kuhn and Thomas Lin Pedersen and Evan Miller and Stephan Milton Bache and Kirill Müller and Jeroen Ooms and David Robinson and Dana Paige Seidel and Vitalie Spinu and Kohske Takahashi and Davis Vaughan and Claus Wilke and Kara Woo and Hiroaki Yutani},
+  year = {2019},
+  journal = {Journal of Open Source Software},
+  volume = {4},
+  number = {43},
+  pages = {1686},
+  doi = {10.21105/joss.01686},
+}
+
+@Article{visdat,
+  title = {visdat: Visualising Whole Data Frames},
+  author = {Nicholas Tierney},
+  doi = {10.21105/joss.00355},
+  url = {http://dx.doi.org/10.21105/joss.00355},
+  year = {2017},
+  publisher = {Journal of Open Source Software},
+  volume = {2},
+  number = {16},
+  pages = {355},
+  journal = {JOSS},
+}
+
+@Article{sf,
+  author = {Edzer Pebesma},
+  title = {{Simple Features for R: Standardized Support for Spatial Vector Data}},
+  year = {2018},
+  journal = {{The R Journal}},
+  doi = {10.32614/RJ-2018-009},
+  url = {https://doi.org/10.32614/RJ-2018-009},
+  pages = {439--446},
+  volume = {10},
+  number = {1},
+}
+
+@Book{sf_book,
+  title = {{Spatial Data Science: With applications in R}},
+  author = {Edzer Pebesma and Roger Bivand},
+  year = {2023},
+  publisher = {Chapman and Hall/CRC},
+  address = {London},
+  url = {https://r-spatial.org/book/},
+  pages = {352},
+  doi = {10.1201/9780429459016},
+}
+
+@Manual{ggsankey,
+  title = {ggsankey: Sankey, Alluvial and Sankey Bump Plots},
+  author = {David Sjoberg},
+  year = {2024},
+  note = {R package version 0.0.99999},
+  url = {https://github.com/davidsjoberg/ggsankey},
+}
+
+@Manual{RColorBrewer,
+  title = {RColorBrewer: ColorBrewer Palettes},
+  author = {Erich Neuwirth},
+  year = {2022},
+  note = {R package version 1.1-3},
+}
+
+@Manual{patchwork,
+  title = {patchwork: The Composer of Plots},
+  author = {Thomas Lin Pedersen},
+  year = {2024},
+  note = {R package version 1.2.0, 
+https://github.com/thomasp85/patchwork},
+  url = {https://patchwork.data-imaginist.com},
+}
+
+@Article{units,
+  title = {Measurement Units in {R}},
+  author = {Edzer Pebesma and Thomas Mailund and James Hiebert},
+  year = {2016},
+  journal = {R Journal},
+  doi = {10.32614/RJ-2016-061},
+  pages = {486--494},
+  volume = {8},
+  number = {2},
+}
+
+@Manual{tinytex,
+  title = {tinytex: Helper Functions to Install and Maintain TeX Live, and Compile
+LaTeX Documents},
+  author = {Yihui Xie},
+  year = {2024},
+  note = {R package version 0.52},
+  url = {https://github.com/rstudio/tinytex},
+}
+
+@Article{TinyTeX,
+  title = {TinyTeX: A lightweight, cross-platform, and easy-to-maintain LaTeX distribution based on TeX Live},
+  author = {Yihui Xie},
+  journal = {TUGboat},
+  year = {2019},
+  volume = {40},
+  number = {1},
+  pages = {30--32},
+  url = {https://tug.org/TUGboat/Contents/contents40-1.html},
+}
+
+@Manual{knitr,
+  title = {knitr: A General-Purpose Package for Dynamic Report Generation in R},
+  author = {Yihui Xie},
+  year = {2024},
+  note = {R package version 1.48},
+  url = {https://yihui.org/knitr/},
+}
+
+@Book{knitr_book,
+  title = {Dynamic Documents with {R} and knitr},
+  author = {Yihui Xie},
+  publisher = {Chapman and Hall/CRC},
+  address = {Boca Raton, Florida},
+  year = {2015},
+  edition = {2nd},
+  note = {ISBN 978-1498716963},
+  url = {https://yihui.org/knitr/},
+}
+
+@Manual{kableExtra,
+  title = {kableExtra: Construct Complex Table with 'kable' and Pipe Syntax},
+  author = {Hao Zhu},
+  year = {2024},
+  note = {R package version 1.4.0, 
+https://github.com/haozhu233/kableExtra},
+  url = {http://haozhu233.github.io/kableExtra/},
+}

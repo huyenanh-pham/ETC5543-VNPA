@@ -1,0 +1,892 @@
+---
+title: "EDA: Biodiversity sighting in Gippsland"
+author: "Huyen-Anh Pham - 33429839"
+date: "12 September 2024"
+bibliography: references.bib
+bibliographystyle: apa
+format:
+  pdf: 
+    fig_caption: true
+    fig_width: 8
+    fig-dpi: 300
+    fig-pos: 'H'
+    keep_tex: true
+    latex_engine: xelatex
+    engine: knitr
+    toc: true
+    toc_depth: 1
+    toc_number: FALSE
+    number-sections: TRUE
+    number-depth: 2
+    papersize: a4
+    geometry:
+      - top = 1cm
+      - bottom = 1.3cm
+      - left = 0.7cm
+      - right = 0.7cm
+      - headsep=22pt
+      - headheight = 11pt
+      - footskip = 20pt
+      - ignorehead
+      - ignorefoot
+      - heightrounded
+    linestretch: 1.25
+    mainfont: Arial
+    sansfont: Arial
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 2
+
+editor: source
+execute: 
+  echo: FALSE
+  warning: FALSE
+  message: FALSE
+  cache: false
+---
+
+\thispagestyle{empty}
+
+\newpage
+
+```{r}
+# Library
+
+# install.packages("remotes")
+# remotes::install_github("davidsjoberg/ggsankey")
+
+lib_name <- c("targets", "tarchetypes", "galah",
+              "tidyverse", "visdat", "sf", "stars", 
+              "ggsankey",
+              "RColorBrewer", "patchwork", "units",
+               "tinytex", "knitr", "kableExtra") 
+invisible(lapply(lib_name, library, character.only = TRUE))
+
+# Get R package citation
+# lib_name |> 
+#   map(citation) |>
+#   map(toBibtex)
+
+# Create a custom theme
+theme_minimal_hpha0042 <- theme_minimal() +
+  theme(
+    # Plot title & subtitle
+    plot.title = element_text(face = 'bold', size = 14),
+    plot.title.position = "plot",
+    plot.subtitle = element_text(color = "grey20", size = 12)
+  )
+theme_set(theme_minimal_hpha0042)
+```
+
+```{r}
+#| eval: false
+
+# Library
+lib_name <- c("tidyverse", "galah") 
+invisible(lapply(lib_name, library, character.only = TRUE))
+
+# GET DATASET A - ALA sighting data
+  # Credentials
+  galah::galah_config(email = "hpha0042@student.monash.edu",
+               download_reason_id = 10, verbose = TRUE)
+  # Define polygon boundary of LAF project area
+  poly_laf <- st_multipoint(c(
+    st_point(c(147.4, -37.8)), # p1
+    st_point(c(148.9, -37.8)), # p2 
+    st_point(c(148.9, -37.2)), # p3 
+    st_point(c(147.4, -37.2))  # p4
+  )) %>%
+    st_cast("POLYGON") |> 
+    st_sfc(crs = st_crs(vic_map))
+
+# Query sighting data from ALA
+dep_ala <- galah_call() |> 
+    galah_geolocate(poly_laf) |> # within LAF project area 
+    galah_filter(!is.na(eventDate),
+                 !is.na(speciesGroup),
+                 eventDate >= "2017-01-01T00:00:00Z",     # Start Date
+                 eventDate <= "2022-01-01T00:00:00Z") |>  # End Date
+    galah_select(speciesGroup, basisOfRecord, recordedBy, BASIS_OF_RECORD_INVALID,
+                 group = c("taxonomy","basic","event")) |>
+    atlas_occurrences(mint_doi = TRUE) |> 
+    # Process data 
+    filter(BASIS_OF_RECORD_INVALID == FALSE) |> # Remove invalid records
+    # Select columns
+    select(c(class:species, speciesGroup, 
+             eventDate, eventTime, 
+             decimalLongitude, decimalLatitude, 
+             basisOfRecord, dataResourceName, recordedBy))
+```
+
+```{r}
+#load the rda file
+load(file = here::here("data/eda/eda_LAF_speciesgroup.rda"))
+```
+
+<!-- {{< pagebreak >}} -->
+# Introduction
+<!-- Problem description, question, and motivation. -->
+This data visualisation project aims to explore the biodiversity and wildfire impacts in Gippsland, Victoria, Australia by visualising the species sighting and fire records. The East Gippsland suffered from wildfires in the season of 2019/2020 [@DELWPFire]. The motivation behind the analysis is the [Life After Fire (LAF) project](https://vnpa.org.au/life-after-fire/) - a nature conservative response by the Victorian National Parks Association. Inspired by the LAF project's goals of monitoring wildlife survival and habitat recovery, this data exploration (DEP) project seeks to answer the following questions:  
+
+::: {.callout-note appearance="simple"}
+**Questions**   
+
+Q1. What are the species groups sighted in Gippsland LAF project area?  
+Q2. How does the sighting change over time?    
+Q3. How was the sighting affected by fire?   
+:::
+
+
+# Data Wrangling
+<!-- Description of the data and data sources with direct urls to the data if available, the steps in data wrangling (including data cleaning and data transformations), and tools that you used.-->
+
+**About the Data**  
+
+The datasets for this project are sourced from (A) the Atlas of Living Australia [(ALA)](http://www.ala.org.au) and (B) the Fire History dataset from Victorian Government's Department of Energy, Environment and Climate Action.   
+The ALA dataset contains sighting records of various species in the Gippsland area. The raw dataset [@ALA] is retrieved using `galah` R package [@galah]. Please refer to the Appendix for the retrieving code of this dataset.  
+The Fire History dataset [@DELWPFireData] contains records of fire incidents in Victoria (download the shapefile dataset [here](https://discover.data.vic.gov.au/dataset/fire-history-overlay-of-most-recent-fires)). 
+
+Refer to the Appendix's @tbl-dd-sighting and @tbl-dd-fire for the data dictionary of the datasets.  
+
+Other supplementary data used in this project are:  
+
+- Victoria shapefile map (Statistical Areas Level 2 - 2021 GDA2020) from the Australian Bureau of Statistics ([ABS](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files#cite-window1)) [@ABSVicMap].  
+- Parks and Conservation Reserves shapefile from the Department of Energy, Environment and Climate Action ([DEECA](https://discover.data.vic.gov.au/dataset/parks-and-conservation-reserves-parkres)) [@DEECA_PARKRES].  
+
+The report is produced using R [@Rlang] via RStudio [@RStudio] and these R packages: `galah` [@galah], `tidyverse` [@tidyverse], `visdat` [@visdat], `sf` [@sf], `ggsankey` [@ggsankey], `RColorBrewer` [@RColorBrewer], `patchwork` [@patchwork], `units` [@units], `TinyTeX` [@TinyTeX], `knitr` [@knitr], and `kableExtra` [@kableExtra].   
+
+**Data Wrangling**  
+
+These following data wrangling steps were performed to prepare the data for exploration:    
+
+**A. Sighting records**    
+
+- Subset by time and space: sighting records between 2017 to 2022 and within the LAF project.   
+- Mutate values of `speciesGroup` column into common species group names. Top 5 species groups are: *Birds*, *Plants*, *Mammals*, *Amphibians*, and *Insects*. Other species groups are grouped into *Others*.    
+- Remove invalid records (`speciesGroup` is NA).  
+- Convert dataset into `sf` object for spatial visualisation.   
+- Handling date-time variable by adding new temporal columns: `eventYear`, `eventMonth`.   
+- Remove unused column: `eventTime`, `recordedBy`.  
+
+**B. Fire History**     
+
+- Subset fire records that intersected with the LAF project area, and fire start date is between Nov 2019 and Feb 2020.  
+- Remove unused column. The remaining columsn are: `FIRE_SEASON`, `FIRE_NO`, `FIRE_NAME`, `START_DATE`, and `geometry`.   
+
+```{r}
+#| eval: FALSE
+
+# Define polygon boundary
+bbox_laf <-
+  st_bbox(
+    c(xmin = 147.4,
+      xmax = 148.9,
+      ymin = -37.8,
+      ymax = -37.2
+    ),
+    crs = st_crs(vic_map)
+  )
+poly_laf <- st_multipoint(c(
+    st_point(c(147.4, -37.8)), # p1
+    st_point(c(148.9, -37.8)), # p2 
+    st_point(c(148.9, -37.2)), # p3 
+    st_point(c(147.4, -37.2))  # p4
+  )) %>%
+    st_cast("POLYGON") |> 
+    st_sfc(crs = st_crs(vic_map))
+  
+top_5_speciesGroup <- c("Birds","Plants","Mammals","Amphibians","Insects")
+
+# [1] SIGHTING 
+dep_sighting <- dep_ala |> 
+  # Remove columns
+  select(-c(eventTime)) |> 
+  # Mutate speciesGroup
+  dplyr::mutate(speciesGroup = ifelse(class == "Amphibia", "Amphibians", 
+                                      str_split_i(speciesGroup, " | ", -1)) 
+                ) |>
+  dplyr::mutate(speciesGroup = if_else(speciesGroup %in% top_5_speciesGroup, 
+                        speciesGroup,
+                        "Others")) |>
+  # Remove invalid records
+  dplyr::filter(!is.na(speciesGroup),
+                eventDate < "2022-01-01") |> 
+  # Add column 
+  dplyr::mutate(eventYear = year(eventDate),
+                eventMonth = lubridate::floor_date(eventDate, "month")) |>
+  # Convert into sf
+  st_as_sf(coords = c("decimalLongitude", "decimalLatitude"), 
+           crs = st_crs(vic_map)) |> 
+  # Reorder columns 
+  dplyr::select("speciesGroup", "class", "order", "family", "genus", "species",
+                "basisOfRecord", "dataResourceName", 
+                "eventYear", "eventMonth","eventDate", "geometry")
+  
+# [2] FIRE
+fire_history_1920_laf <- st_filter(
+  fire_history_1920, poly_laf, .predicate = st_intersects) |>
+  filter(START_DATE < "2020-03-01")
+
+dep_fire <- fire_history_1920_laf |> 
+    select(c("FIRE_SEASON", "FIRE_NO", "FIRE_NAME", "START_DATE","geometry"))
+
+# Define color palette
+report_pal <- setNames(RColorBrewer::brewer.pal(n=8,name="Set2")[c(1,2)],
+              c("parkres","fire"))
+
+
+pal <- setNames(RColorBrewer::brewer.pal(n = 8, name = "Set2")[c(7,5,4,3,6,8)],
+              c(top_5_speciesGroup, "Others"))
+
+# RASTER MAP: PREPAERE DATA  ---------------------------------------------------
+
+# Distance of LAF project area
+# st_distance(
+#   st_sfc(st_point(c(147.4, -37.8)), crs = st_crs(vic_map)), 
+#   st_sfc(st_point(c(148.9, -37.8)), crs = st_crs(vic_map))
+#   )
+# Units: [m] 131790.6
+# st_distance(
+#   st_sfc(st_point(c(147.4, -37.8)), crs = st_crs(vic_map)), 
+#   st_sfc(st_point(c(147.4, -37.2)), crs = st_crs(vic_map))
+#   )
+# Units: [m] 66717.06
+
+# Create grid cell
+grid <- st_make_grid(
+    poly_laf, 
+    cellsize = c(0.02, 0.02), # 20 x 20 m
+    crs = (vic_map),
+    what = "polygons",
+    square = TRUE
+    )
+grid <- st_sf(grid_id = 1:length(lengths(grid)), grid) # Add grid ID
+
+# JOIN sighting with grid_id 
+dep_sighting_grid_id <- dep_sighting[,c("eventYear","species")] |> 
+  sf::st_join(grid, join = st_within, left = TRUE) |> 
+  sf::st_drop_geometry() |>
+  group_by(grid_id, eventYear) |>
+  summarise(species_count = n_distinct(species),
+            sighting_count = n()) 
+dep_sighting_grid <- grid |> 
+  left_join(dep_sighting_grid_id, by = "grid_id") 
+
+# Save to rda file -------------------------------------------------------------
+save(# Raw Data
+     dep_ala, 
+     vic_map, parkres, fire_history_1920, 
+     # Wrangled data
+     bbox_laf, poly_laf, top_5_speciesGroup, 
+     dep_sighting, fire_history_1920_laf, dep_fire,
+     report_pal, pal,
+     grid, dep_sighting_grid_id, dep_sighting_grid,
+     file = here::here("data/eda/eda_LAF_speciesgroup.rda"))
+```
+
+
+# Data Checking
+<!-- Description of the data checking that you performed, errors that you found, your method and justification for how you corrected them, and the tools that you used. A comprehensive checking process is still expected, even if the data set is believed to be clean (i.e., to justify its correctness). 
+-->
+
+* Sensibility checking for the coordinates find no invalid value (@fig-sighting-map).  
+* Missing values: Using R library `visdat` to check for missing values in the dataset.   
+    + A. Sighting (@fig-sighting-checking): Values for the species taxonomy columns are not always recorded. `{r} round(dep_ala |> filter(is.na(eventTime)) |> nrow() *100 / nrow(dep_ala),0)`% of the `eventTime` records are missing. `{r} paste0(round(dep_ala |> filter(is.na(recordedBy)) |> nrow() *100/ nrow(dep_ala),0),"%")` of the `recordedBy` records are missing.       
+    + B. Fire (@fig-fire-checking): No missing values in columns needed in this analysis.   
+* Date format checking: both datasets have the appropriate date values.  
+* Checking for outliers in sighting daily count (@fig-sighting-daily). There are some outliers with more than 1,000 records per day in *Plants* species group. These outliers are from the *Victorian Biodiversity Atlas* and not errors, but could be due to the high demand in sighting these species for researching purposes.
+    
+
+```{r}
+#| label: fig-sighting-checking
+#| fig-cap: "Visualisation of missing values in dataset A. Sighting records"
+#| fig-width: 8
+#| fig-height: 4
+
+set.seed(5147)
+# Before Wrangling
+p_sighiting_wrangling_before <- visdat::vis_dat(
+  dep_ala |> 
+  dplyr::slice_sample(n=1000)
+) +
+  theme(legend.position = "bottom") + 
+  labs(subtitle = "Before")
+
+# After Wrangling
+p_sighiting_wrangling_after <- visdat::vis_dat(
+  dep_sighting |> 
+    sf::st_drop_geometry() |>
+    dplyr::slice_sample(n=1000)
+) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        # Legend
+        legend.position = "bottom",
+        # legend.title = element_text(size = 8),
+        # legend.text = element_text(size = 8),
+        # guide_legend = guide_legend(override.aes = list(size = 1))
+        ) + 
+  labs(subtitle = "After")
+ 
+# Plot Before-After
+p_sighiting_wrangling_before + p_sighiting_wrangling_after + 
+  patchwork::plot_annotation(
+    title = "Checking missing values in dataset A. Sighting records",
+    theme = theme(),
+    caption = "(*) Only 1000 randomly sampled records are shown. Coordinate columns were turnt into sf geometry are not shown in the After plot (right)."
+  ) 
+```
+
+```{r}
+#| label: fig-fire-checking
+#| fig-cap: "Visualisation of missing values in dataset B. Fire history"
+#| fig-width: 8
+#| fig-height: 4
+
+# Before Wrangling
+p_fire_wrangling_before <- visdat::vis_dat(
+  fire_history_1920_laf |> sf::st_drop_geometry() 
+) +
+  theme(legend.position = "bottom") + 
+  labs(subtitle = "Before")
+# After Wrangling
+p_fire_wrangling_after <- visdat::vis_dat(
+  dep_fire |> sf::st_drop_geometry() 
+) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        legend.position = "bottom") + 
+  labs(subtitle = "After")
+
+# Plot Before-After
+p_fire_wrangling_before + p_fire_wrangling_after + 
+  patchwork::plot_annotation(
+    title = "Checking missing values in dataset B. Fire history",
+    theme = theme(plot.title = element_text(size = 14)),
+    caption = "(*) geometry of the sf dataset is not shown in the both plot."
+  )
+```
+
+# Data Exploration
+<!-- Description of the data exploration process with details of the visualisations (including figures and descriptions of findings) and statistical tests (if applicable) you used, what you discovered, and what tools that you used. -->
+
+## Fire 
+
+```{r}
+#| label: fig-fire
+#| fig-cap: "The extension of 2019/2020 megafires across the Gippsland LAF project area."
+#| fig.width: 8
+#| fig.height: 4
+
+p_fire_1 <- ggplot() + 
+  geom_sf(data = vic_map, fill = NA, color = "grey80") + 
+  geom_sf(data = parkres, fill = report_pal[["parkres"]], color = NA) + 
+  geom_sf(
+    data = fire_history_1920_laf |> filter(START_DATE < "2020-01-01"),
+    fill = alpha(report_pal[["fire"]],0.8),
+    color = NA
+  ) +
+  geom_sf(data = poly_laf, fill = NA, color = "black") +
+  coord_sf(xlim = bbox_laf[c("xmin", "xmax")] + c(-0.3,1), ylim = bbox_laf[c("ymin", "ymax")] + c(-0.5,0.5)) + # Zoom
+  theme_void() +
+  labs(subtitle = "Nov 2019: 3,181 km^2 burnt area")
+
+p_fire_2 <- ggplot() + 
+  geom_sf(data = vic_map, fill = NA, color = "grey80") + 
+  geom_sf(data = parkres, aes(fill = "Parks and Reservations"), color = NA) + 
+  geom_sf(
+    data = fire_history_1920_laf |> filter(START_DATE < "2020-01-01"),
+    aes(fill = "Wildfires"),
+    alpha = 0.4,
+    color = NA
+  ) + 
+  geom_sf(
+    data = fire_history_1920_laf |> filter(START_DATE > "2020-01-01"),
+    aes(fill = "Wildfires"),
+    alpha = 0.8,
+    color = NA
+  ) +
+  geom_sf(data = poly_laf, aes(color = "LAF project"), fill = NA) +
+  scale_fill_manual(
+    name = "Area", 
+    values = c("Wildfires" = report_pal[["fire"]],
+               "Parks and Reservations" = report_pal[["parkres"]])
+    ) + 
+  scale_color_manual(name = NULL, values = c("LAF project" = "black")) +
+  coord_sf(xlim = bbox_laf[c("xmin", "xmax")] + c(-0.3,1), ylim = bbox_laf[c("ymin", "ymax")] + c(-0.5,0.5)) + # Zoom
+  theme_void() +
+  labs(subtitle = "Jan 2020: +6,510 km^2")
+
+# Map Plot
+(p_fire_1 + theme(legend.position = "none")) +
+(p_fire_2 + 
+    plot_layout(guides = "collect") & theme(legend.position = "bottom")) + 
+  patchwork::plot_annotation(
+  title = "The extension of 2019/2020 megafires",
+  caption = '(*) Only fire records intersect with the LAF project area are shown')
+
+
+# Calculate burnt area (km^2)
+# fire_history_1920_laf |>
+#   group_by(year(START_DATE)) |>
+#   summarise(burnt_area = units::set_units(sum(st_area(geometry)),"km^2"))
+# 2019	3181.774 
+# 2020	6510.091
+```
+
+There were two major outburst of fire in the LAF project area during the megafires 2019/2020. The first one started in 22 November 2019 and the second one started in January 2020. The second outburst was twice more extensive than the first one, reached to more parks and reservation areas. More than 80% of the LAF project area was damaged by the wildfires (@fig-fire).  
+
+## Sightings  
+
+### What are the species groups sighted in Gippsland?  
+
+```{r}
+#| label: fig-sighting-monthly
+#| fig-cap: "Monthly sightings in Gippsland from 2017 to 2021"
+#| fig.width: 8
+#| fig.height: 2
+#| fig-show: hold
+
+dep_fire_timeframe <- data.frame(
+  date_start = as.POSIXct(c("2019-11-22", "2019-11-22")), 
+  date_end = as.POSIXct(c("2020-03-01", "2020-03-01")))
+
+# Line plot
+ggplot(
+  data = dep_sighting |>
+      sf::st_drop_geometry() |>
+      group_by(eventMonth) |>
+      summarise(n = n())
+) +
+  geom_line(
+    aes(x = eventMonth, y = n),
+    color = "grey30",
+    linewidth = 1
+  ) +
+  # Line
+  geom_point(aes(x = eventMonth, y = n),
+             size = 1.5) +
+  # Highlight the fire period
+  geom_rect(
+    data = dep_fire_timeframe,
+    aes(xmin = date_start, xmax = date_end, ymin = -Inf, ymax = Inf),
+    fill = report_pal[["fire"]],
+    alpha = 0.2
+  ) +
+  # Annoation
+  annotate(
+    "text", x = as.POSIXct("2019-05-01"), y = 7500, 
+    label = "Wildfires 2019/20",
+    fontface = "bold",
+    color = report_pal[["fire"]]) + 
+  ylim(0,8000) +
+  labs(title = "Monthly number of sightings in Gippsland", 
+       subtitle = "2017 - 2021",
+       x = NULL, y = NULL)
+```
+  
+First, the analysis of aggregated monthly sighting data reveals a cyclical pattern, with significantly lower sightings during the winter months and higher counts in the summer. As illustrated in  (@fig-sighting-monthly), this trend is consistent across multiple years. To gain a more accurate understanding of long-term trends, we then aggregating sighting records by year.  
+  
+```{r}
+#| label: fig-sg-composition
+#| fig-cap: "The composition of species groups sighted in Gippsland from 2017 to 2021."
+#| fig.width: 8
+#| fig.height: 4
+
+dep_sighting |> 
+  sf::st_drop_geometry() |>
+  group_by(eventYear, speciesGroup) |> 
+  summarise(sighting_count = n()) |> 
+  mutate(sighting_pct = sighting_count*100/sum(sighting_count)) |> 
+  ggplot() +
+  geom_area(aes(x = eventYear, y = sighting_pct, fill = speciesGroup),
+            position = "stack") +
+  scale_fill_manual(values = pal, name = "Species group") +
+  theme(legend.position = "bottom",
+        # Plot title & subtitle
+        plot.title = element_text(face = 'bold',  size = 14),
+        plot.title.position = "plot", 
+        plot.subtitle = element_text(color = "grey20",  size = 12)) +
+  guides(fill = guide_legend(nrow = 1)) + # Legend nrow
+  labs(title = "How the sighting composition changes over time?",
+       subtitle = "% of the total yearly sightings",
+       x = NULL, y = NULL)
+```
+
+**What are the species groups sighted in Gippsland?**   
+
+There are five main species groups sighted in Gippsland LAF project area: *Amphibians*, *Birds*, *Insects*, *Mammals*, *Plants*. Species groups with low number of yearly sightings are classified as *Others*.  
+
+**How does the sighting change over time?**  
+
+Prior to the 2019/2020 megafires, *Birds* sightings dominated the Gippsland region, constituting 84% and 88% of all sightings in 2017 and 2018, respectively. However, post-fire data reveals a shift in the distribution of sightings. While the proportion of *Birds* sightings decreased, there was a significant increase in sightings of *Plants*, *Mammals* and *Insects*, suggesting an increase in data collection for the ecological recovery research.  
+
+```{r}
+#| label: fig-sighting-daily
+#| fig-cap: "Daily sightings by species group in Gippsland from 2017 to 2021"
+#| fig-width: 8
+#| fig-height: 6.5
+#| fig-show: hold
+
+dep_sighting_daily <- dep_sighting |> 
+  sf::st_drop_geometry() |>
+  group_by(eventDate = lubridate::date(eventDate),
+           speciesGroup) |>
+  summarise(sighting_count = n()) |>
+  ungroup()
+
+dimDate <- data.frame(
+  eventDate = rep(as_date(c(ymd("2017-01-01"):ymd("2021-12-31"))), length(unique(dep_sighting_daily$speciesGroup))),
+  speciesGroup = rep(unique(dep_sighting_daily$speciesGroup) , each = length(c(ymd("2017-01-01"):ymd("2021-12-31"))))
+    )
+
+dep_sighting_daily <- dep_sighting_daily |>
+  right_join(dimDate, by = c("eventDate","speciesGroup")) |>
+  arrange(speciesGroup, eventDate) |>
+  mutate(
+    eventYear = lubridate::year(eventDate),
+    woy = lubridate::week(eventDate), 
+    dow = factor(lubridate::wday(eventDate, week_start=1, label = T), 
+                        levels = c("Sun","Sat","Fri","Thu","Wed","Tue","Mon")))
+
+# Heatmap Plot
+dep_sighting_daily |>   
+  ggplot(aes(x = woy, y = dow)) +
+  geom_tile(aes(fill = sighting_count), color = "white", size = 0.1) + 
+  # coord_fixed() + # square tiles
+  scale_fill_viridis_c(option = "D",
+                       na.value = "grey90",
+                       direction = -1,
+                       name = "Daily sightings") +
+  scale_color_manual(values="gray80") +
+  facet_grid(speciesGroup ~ eventYear) +
+  theme(panel.grid=element_blank(),
+        # Legend
+        legend.position = "bottom", 
+        legend.justification = "right",
+        legend.key.size=unit(2, "points"),
+        legend.key.width=unit(30, "points"),
+        # Axis
+        axis.text.y = element_text(size = 6),
+        # Facet labels
+        strip.text.x = element_text(face = "bold"), 
+        strip.text.y = element_text(face = "bold") 
+        ) +
+  labs(title = "Daily sightings by species group",
+       subtitle = "Gippsland: 2017 - 2021",
+       x = "Week of year", y = NULL)
+```
+
+**When did we sight these species groups?**   
+
+@fig-sighting-daily presents the daily sightings by each species group. *Birds* sightings are more frequent during summer months. In 2017 *Mammals* sightings, there are two time periods with consistently daily sightings. Since 2019, interest in sighting *Mammals* spread out more evenly throughout the year. In *Plants* sightings, there are three outliers with particularly high daily sightings: one in January 2019, the other two in October and November 2020.  
+
+### How do we sight the species?    
+
+```{r}
+#| label: fig-sighting-contributor
+#| fig-cap: "Data sources and recording basis of the sightings in Gippsland from 2017 to 2021."
+#| fig-width: 8
+#| fig-height: 4.5
+
+# Prepare data for Sankey
+
+top_4_dataResourceName <- dep_sighting |>
+  sf::st_drop_geometry() |>
+  group_by(speciesGroup, dataResourceName) |>
+  summarise(sighting_count = n()) |> 
+  ungroup() |> 
+  filter(sighting_count > 2000) |> 
+  distinct(dataResourceName) |>
+  pull()
+
+dep_sighting_sankey <- dep_sighting |>
+  sf::st_drop_geometry() |>
+  mutate(
+    dataResourceName = if_else(
+      dataResourceName %in% top_4_dataResourceName,
+      dataResourceName,
+      "Others"),
+    basisOfRecord = if_else(basisOfRecord == "HUMAN_OBSERVATION",
+                            "Human Observation",
+                            "Others")
+  ) |>
+  select(c(dataResourceName, speciesGroup, basisOfRecord)) |>
+  ggsankey::make_long(dataResourceName, speciesGroup, basisOfRecord)
+
+
+# Sankey plot 
+
+dep_sighting_sankey |>
+  ggplot(aes(
+    x = x,
+    next_x = next_x,
+    node = node,
+    next_node = next_node,
+    fill = factor(node),
+    label = node
+  )) +
+  geom_sankey(
+    flow.alpha = 0.5,
+    node.color = "grey50",
+    show.legend = TRUE,
+    space = 20000,
+    width = 0.1
+  ) +
+  geom_sankey_label(
+    hjust = -0.1,
+    # hjust = if_else(x == "basisOfRecord", 1, 0),
+    size = 8 / .pt,
+    color = "black",
+    fill = alpha("white", 0.7)
+  ) +
+  scale_fill_manual(values = c(
+    c(
+      "Victorian Biodiversity Atlas" = "#B35806",
+      "eBird Australia" = "#E08214",
+      "BirdLife Australia, Birdata"  = "#FDB863",
+      "iNaturalist Australia" = "#FEE0B6",
+      "Human Observation" = "#8073AC"
+    ),
+    pal
+  )) +
+  theme_sankey(base_size = 16) +
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        # Plot title & subtitle
+        plot.title = element_text(face = 'bold', size = 14),
+        plot.title.position = "plot",
+        plot.subtitle = element_text(color = "grey20", size = 12)
+        ) + 
+  labs(title = "Who are the top contributors and How did they sight species?")
+```
+
+@fig-sighting-contributor reveals the top data contributors to be *Victorian Biodiversity Atlas (VBA)*, *eBird Australia*, *BirdLife Australia, Birdata*, and *iNaturalist Australia*. The most contributive organisation, VBA, has its sighting effort distributed across all species groups, while the 2nd and 3th runner-up, *eBird Australia* and  *BirdLife Australia, Birdata*, mainly focus on sighting *Birds*. *Human Observation* is the main basis of recording, accounts for `r paste0(round(nrow(subset(dep_sighting, basisOfRecord == "HUMAN_OBSERVATION")) *100 / nrow(dep_sighting),0),"%")` of the total sightings. All *Birds* sightings are recorded by *Human Observation* method.   
+
+### Where are the sightings located?  
+
+```{r}
+#| label: fig-sighting-map
+#| fig-cap: "Each individual sighting record a year before and after the wildfires in Gippsland."
+#| fig-width: 8
+#| fig-height: 3
+
+p_map_sighting_before <- ggplot() +
+  geom_sf(data = vic_map,
+          fill = "grey99", color = "grey70") +
+  geom_sf(
+    data = dep_sighting |> filter(eventDate >= "2018-11-01" & eventDate < "2019-11-01"), 
+    aes(color = speciesGroup), 
+    alpha = 0.5 , size = 1
+  ) +
+  scale_color_manual(
+    values = pal,
+    name = "Species Group",
+    # Legend
+    guide = guide_legend(nrow = 1, override.aes = list(size = 4, alpha = 1))
+    ) +
+  coord_sf(xlim = bbox_laf[c("xmin", "xmax")], ylim = bbox_laf[c("ymin", "ymax")]) + # Zoom
+  theme_void() + 
+  labs(subtitle = "Before: Nov 2018 - Oct 2019")
+
+p_map_sighting_after <- ggplot() +
+  geom_sf(data = vic_map,
+          fill = "grey99", color = "grey70") +
+  geom_sf(data = fire_history_1920_laf, fill = alpha(report_pal[["fire"]],0.2), color = NA) +
+  geom_sf(
+    data = dep_sighting |> filter(eventDate >= "2019-11-01" & eventDate < "2020-11-01"), 
+    aes(color = speciesGroup), 
+    alpha = 0.5 , size = 1
+  ) +
+  scale_color_manual(values = pal, name = "Species Group") +
+  coord_sf(xlim = bbox_laf[c("xmin", "xmax")], ylim = bbox_laf[c("ymin", "ymax")]) + # Zoom
+  theme_void() + 
+  labs(subtitle = "After: Nov 2019 - Oct 2020")
+
+# Map Plot
+(p_map_sighting_before + 
+    plot_layout(guides = "collect") & theme(legend.position = "bottom")) + 
+  (p_map_sighting_after + theme(legend.position = "none")) +
+  patchwork::plot_annotation(
+    title = "1 Year of sighting records Before - After the fire",
+    theme = theme(plot.title = element_text(size = 14)))
+
+```
+
+
+The pre-fire *Plants* sightings were concentrated in the western part of the LAF project area while *Birds* usually found along the eastern coastal line. A year after the fire, there were significantly more sighting effort of *Plants* and *Mammals* in the fire-affected area with some geographical clustering and pattern. The sighting trails of *Plants* might reflect the trekking route taken by sighter. More *Amphibians* were sighted along the southern coastal unburned area.  
+
+```{r}
+#| label: fig-sighting-grid
+#| fig-cap: "Number of species sighted per year in each 20 x 20 m cell within Gippsland from 2018 to 2021."
+#| fig-width: 8
+#| fig-height: 6
+
+# Raster Map 
+ggplot() +
+  geom_sf(data = vic_map, fill = NA, color = "grey80") + 
+  geom_sf(data = dep_sighting_grid |> filter(eventYear > 2017),
+          aes(fill = species_count), 
+          color = alpha("white",0.5)) +
+  facet_wrap(~eventYear) +
+  # Zoom
+  coord_sf(xlim = bbox_laf[c("xmin", "xmax")], ylim = bbox_laf[c("ymin", "ymax")]) + 
+  scale_fill_viridis_c(option = "D",
+                       direction = -1,
+                       name = "Number of species") +
+  theme_void() + 
+  theme(panel.grid=element_blank(),
+        # Facet labels
+        strip.text.x = element_text(face = "bold"),
+        # Legend
+        legend.position = "bottom", 
+        legend.justification = "right",
+        legend.key.size=unit(2, "points"),
+        legend.key.width=unit(30, "points"),
+        # Axis
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        # Plot title & subtitle
+    plot.title = element_text(face = 'bold', size = 14),
+    plot.title.position = "plot",
+    plot.subtitle = element_text(color = "grey20", size = 12)
+        ) + 
+  labs(title = "How many species are sighted in each grid cell?",
+       subtitle = "Gippsland LAF project area: 2018 - 2021",
+       caption = "(*) A grid cell = 20 x 20 m area",
+       x = NULL, y = NULL)
+
+```
+
+To assess the species richness [@MOORE2013648] in Gippsland LAF project area, spatial aggregation is performed using rasterising and operations supported by the `sf` R package.  
+
+The project area (132K x 67K m) is divided into grid of 20 x 20 m cells. We aggregate the yearly distinct count of `species` sighting for each grid cell (i.e. How many distinct species has been found in a cell each year?). 
+
+@fig-sighting-grid demonstrates that more species are found in the southern part of the project area. Richness hotspot is located at the south-eastern area (bottom right) where more than 200 species are sighted within a cell. However, more coloured cell appear after the 2019/2020 wildfires does not mean the species richness is higher. This only reflects the increased sighting effort in the both burnt and unburnt area.  
+    
+
+
+
+{{< pagebreak >}}
+# Conclusion
+<!-- Summary of what you learned from the data and how your data exploration process answered (or didn’t) your original questions. -->
+
+**Q1. What are the species groups sighted in the Gippsland LAF project area?**  
+
+The visual analysis reveals that the *Birds* species group dominated the Gippsland research region. 
+
+**Q2. How does the sighting change over time?**
+
+The monthly number of sightings follow a cyclical pattern, with significantly lower sightings during the winter months and higher counts in the summer.  
+
+**Q3. How was the sighting affected by fire?**  
+
+The wildfires triggered a shift in the distribution of sightings. The proportion of *Birds* sightings decreased, while the sightings of *Plants*, *Mammals*, and *Insects* increased over time. After-fire responses help increased the sighting effort in the area, shedding light on the biodiversity status and recovery process.   
+
+
+# Reflection
+<!-- Brief description of what lessons you learnt in this project and what you might have done differently in hindsight. -->
+
+_**Limitation of chosen datasets**_  
+
+The most significant limitation of the voluntary observational data is that sightings are arbitrary events and may be influenced by numerous factors outside the scope of our dataset. There may also be observer bias in our dataset, as birdwatchers who actively seek out these birds are more likely to go out during specific hours of the day that align with their own schedules. Additionally, the observational nature of sighting data prevents us from applying model-fitting procedures for this analysis.
+
+Another limitation of the Sighting dataset is missing or unreliable date-time values. This lack of date-time information hinders futher spatio-temporal analysis, which is essential for biodiversity understanding.  
+
+The Fire dataset inherits some limitations from the raw Fire history data source, as fire severity are not available for all records. This limits our ability to assess the relationship between fire severity and species richness.  
+
+{{< pagebreak >}}
+# Appendix  
+
+```{r}
+#| label: tbl-dd-sighting
+#| tbl-cap: "Data Dictionary - Dataset A. Sighting records"
+
+tibble(
+  "Variable" = names(sapply(dep_sighting, class)),
+  "Type" = sapply(dep_sighting, class),
+  "Description" = c(
+    "Species group",
+    "Taxonomic class",
+    "Taxonomic order",
+    "Taxonomic family",
+    "Taxonomic genus",
+    "Taxonomic specific species",
+    "The specific nature of the data record (i.e. Human Observation, Machine Observation, Fossil Specimen, etc.)",
+    "The data resource that supplies the record",
+    "Sighting event Year",
+    "Sighting event Month",
+    "Sighting event Date",
+    "Coordinates associated with the sighting record"
+  )
+) |>
+  kable(row.names = T) 
+```
+  
+```{r}
+#| label: tbl-dd-fire
+#| tbl-cap: "Data Dictionary - Dataset B. Fire history"
+
+tibble(
+  "Variable" = names(sapply(dep_fire, class)),
+  "Type" = sapply(dep_fire, class),
+  "Description" = c(
+    "Fire season (Year)",
+    "Fire Number",
+    "Fire Name",
+    "Fire Start date",
+    "Polygon boundary of each fire record"
+  )
+) |>
+  kable(row.names = T)
+```
+
+```{r}
+#| label: appendix-code-get-data
+#| eval: FALSE
+#| echo: FALSE
+# Library
+lib_name <- c("tidyverse", "galah") 
+invisible(lapply(lib_name, library, character.only = TRUE))
+
+# GET DATASET A - ALA sighting data
+  # Credentials
+  galah::galah_config(email = "hpha0042@student.monash.edu",
+               download_reason_id = 10, verbose = TRUE)
+  # Define polygon boundary of LAF project area
+  poly_laf <- st_multipoint(c(
+    st_point(c(147.4, -37.8)), # p1
+    st_point(c(148.9, -37.8)), # p2 
+    st_point(c(148.9, -37.2)), # p3 
+    st_point(c(147.4, -37.2))  # p4
+  )) %>%
+    st_cast("POLYGON") |> 
+    st_sfc(crs = st_crs(vic_map))
+# Query sighting data from ALA
+dep_ala <- galah_call() |> 
+    galah_geolocate(poly_laf) |> # within LAF project area 
+    galah_filter(!is.na(eventDate),
+                 !is.na(speciesGroup),
+                 eventDate >= "2017-01-01T00:00:00Z",     # Start Date
+                 eventDate <= "2022-01-01T00:00:00Z") |>  # End Date
+    galah_select(speciesGroup, basisOfRecord, recordedBy, BASIS_OF_RECORD_INVALID,
+                 group = c("taxonomy","basic","event")) |>
+    atlas_occurrences(mint_doi = TRUE) |> 
+    # Process data 
+    filter(BASIS_OF_RECORD_INVALID == FALSE) |> # Remove invalid records
+    # Select columns
+    select(c(class:species, speciesGroup, 
+             eventDate, eventTime, 
+             decimalLongitude, decimalLatitude, 
+             basisOfRecord, dataResourceName, recordedBy))
+# Generate citation 
+atlas_citation(dep_ala) 
+```
+
+{{< pagebreak >}}
+# Bibliography
+
+<!-- Appropriate references and bibliography (this includes acknowledgements to online references or sources that have influenced your exploration) using either the APA and IEEE referencing system. -->

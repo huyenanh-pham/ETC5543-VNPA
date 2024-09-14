@@ -3,7 +3,7 @@
 # 0. Dictionary 
 # request_metadata(type = "fields") |>
 #   collect() |>
-#   dplyr::filter(grepl("order", id)) # filter column name
+#   dplyr::filter(grepl("dataResourceName", id)) # filter column name
 
 # Search for fields that include the word "date"
 # galah::search_all(fields, "order")
@@ -16,7 +16,7 @@
 galah_config(email = "hpha0042@student.monash.edu",
              download_reason_id = 10, verbose = TRUE)
   
-bbox_bunyip <- st_bbox(parkres |> filter(NAME == "Bunyip State Park")) 
+bbox_bunyip <- st_bbox(parkres |> filter(NAME == "Bunyip State Park"))
 poly_bunyip <- st_as_sfc(bbox_bunyip)
 
 galah_call() |> 
@@ -143,8 +143,19 @@ vba_fauna |>
 
 
 # PARKRES ----------------------------------------------------------------------
-parkres |> filter(NAME == "Bunyip State Park") |> View()
+parkres |> filter(NAME == "Bunyip State Park") 
+parkres |> filter(str_detect(NAME,"Gippsland"))
 
+# Check Bunyip overlapping Gippsland 
+ggplot() + 
+  geom_sf(data = vic_map) +
+  geom_sf(data = poly_fire_1920, fill = alpha("darkred",0.4)) +
+  geom_sf(data = parkres |> filter(NAME == "Bunyip State Park"), 
+          fill = alpha("orange",0.4)) + 
+  geom_sf(data = parkres |> filter(str_detect(NAME,"Gippsland")), 
+          fill = alpha("limegreen",0.4)) + 
+  coord_sf(xlim = bbox_fire_1920[c("xmin", "xmax")], ylim = bbox_fire_1920[c("ymin", "ymax")]) + # Zoom
+  theme_bw()
 
 # EVC --------------------------------------------------------------------------
 # Plot
