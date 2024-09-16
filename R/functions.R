@@ -58,3 +58,43 @@ get_ala_data_speciesGroup <- function(){
 }
 
 
+
+
+# Get data from ALA by polygon boundary and Date -------------------------------
+
+get_ala <- function(input_poly = NULL,
+                    input_start_date = NULL,
+                    input_end_date = NULL) {
+  # Credentials
+  galah_config(email = "hpha0042@student.monash.edu",
+               download_reason_id = 10,
+               verbose = TRUE)
+  
+  df <- galah_call() |>
+    # Filter by boundary sf polygon
+    galah_geolocate(input_poly, type = "polygon") |>
+    # Filter Timeframe
+    galah_filter(
+      !is.na(eventDate),
+      !is.na(speciesGroup),
+      cl22 == "Victoria",
+      eventDate >= input_start_date,
+      eventDate <= input_end_date
+    ) |>
+    # Select columns
+    galah_select(
+      speciesGroup, 
+      basisOfRecord, dataResourceName, recordedBy,
+      BASIS_OF_RECORD_INVALID,
+      group = c("taxonomy","basic","event")) |> 
+    atlas_occurrences(mint_doi = TRUE) |> 
+    # Remove invalid records
+    filter(BASIS_OF_RECORD_INVALID == FALSE) |>
+    # Remove columns
+    dplyr::select(-c(BASIS_OF_RECORD_INVALID)) |>
+    # Convert to sf object
+    sf::st_as_sf(coords = c("decimalLongitude", "decimalLatitude")
+                 st_crs(ala_sbb_raw) <- st_crs(input_poly))
+  
+  return(df)
+}

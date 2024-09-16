@@ -18,6 +18,9 @@ execute:
 lib <- c("targets","tidyverse","sf","galah","tmap","leaflet","plotly")
 invisible(lapply(lib, library, character.only = TRUE))
 rm(lib)
+
+# Targets config
+tar_config_set(store = here::here('_targets'))
 ```
 
 ```{r}
@@ -27,6 +30,7 @@ tar_load(fire_history_1920)
 tar_load(ala_laf) 
 tar_load(fire_history_laf) 
 tar_load(evc_laf) 
+tar_load(poly_fire_1920)
 ```
 
 # The megafire in 2019-2020
@@ -159,5 +163,10 @@ ggplot() +
 fire_history_1920  |> st_drop_geometry() |>
   group_by(FIRE_SVRTY) |>
   summarise(n = n())
+```
+# Fire
+
+```{r}
+
 ```
 

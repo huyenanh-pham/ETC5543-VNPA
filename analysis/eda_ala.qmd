@@ -1,0 +1,35 @@
+---
+title: "EDA ALA sighting"
+subtitle: "East Gippsland (extended area)" 
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 2
+editor: source
+execute:
+  echo: false
+  message: false
+  warning: false
+---
+
+```{r library}
+# Library
+lib <- c("targets","tarchetypes",
+         "tidyverse","sf","galah","tmap","leaflet","plotly")
+invisible(lapply(lib, library, character.only = TRUE))
+rm(lib)
+
+# Targets config
+tar_config_set(store = here::here("_targets"))
+
+# Create a custom theme
+theme_minimal_hpha0042 <- theme_minimal() +
+  theme(
+    # Plot title & subtitle
+    plot.title = element_text(face = 'bold'),
+    plot.title.position = "plot",
+    plot.subtitle = element_text(color = "grey20", size = 12)
+  )
+theme_set(theme_minimal_hpha0042)
+```

@@ -115,6 +115,29 @@ list(
              ),
   tar_target(evc_laf,
              sf::st_intersection(evc, poly_laf)
-             )
+             ),
   
+  
+  
+  
+  
+  # Define boundary of ALA sighting (sf polygon)
+  tar_target(poly_filter_ala,
+             sf::st_multipoint(c(
+               st_point(c(146.3, -38)), # p1
+               st_point(c(sf::st_bbox(poly_fire_1920)[["xmax"]], -38)), # p2 
+               st_point(c(sf::st_bbox(poly_fire_1920)[["xmax"]], -35.9)), # p3 
+               st_point(c(146.3, -35.9))  # p4
+             )) |>
+               st_cast("POLYGON") |>
+               st_sfc(crs = st_crs(vic_map)) 
+             # |> sf::st_intersection(sf::st_union(vic_map))
+             ),
+  
+  tar_target(ala_sighting,
+             get_ala(
+               input_poly = poly_filter_ala,
+               input_start_date = "2017-01-01T00:00:00Z",
+               input_end_date = "2021-07-23T00:00:00Z")
+             )
 )

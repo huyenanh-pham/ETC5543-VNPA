@@ -3,50 +3,27 @@
 # 0. Dictionary 
 # request_metadata(type = "fields") |>
 #   collect() |>
-#   dplyr::filter(grepl("dataResourceName", id)) # filter column name
+#   dplyr::filter(grepl("record", id)) # filter column name
 
 # Search for fields that include the word "date"
-# galah::search_all(fields, "order")
+# galah::search_all(fields, "name")
 
-## COUNT OF RECORDS -----
-
+## Count of records
 # (https://galah.ala.org.au/R/reference/atlas_counts.html?q=atlas_counts#null)
 
 # credential
 galah_config(email = "hpha0042@student.monash.edu",
              download_reason_id = 10, verbose = TRUE)
   
-bbox_bunyip <- st_bbox(parkres |> filter(NAME == "Bunyip State Park"))
+bbox_bunyip <- st_bbox(parkres |> filter(NAME == "Bunyip State Park")) 
 poly_bunyip <- st_as_sfc(bbox_bunyip)
 
 galah_call() |> 
-  galah_geolocate(
-    # poly_bunyip, type = "polygon"
-    bbox_laf, type = "bbox"
-    ) |>
-  galah_filter(
+  galah_geolocate(poly_bunyip, type = "polygon") |> 
+  # galah_filter(
   #     speciesGroup == "Mammals",
-  #     year == 2016
-    eventDate >= "2017-01-01T00:00:00Z", 
-    eventDate <= "2021-07-23T00:00:00Z"
-       ) |> 
+  #     year == 2016) |> 
   atlas_counts()
-
-## COUNT group_by -----
-galah_call() |> 
-  galah_geolocate(
-    # poly_bunyip, type = "polygon"
-    bbox_laf, type = "bbox"
-  ) |>
-  galah_filter(
-    # speciesGroup == "Mammals",
-    eventDate >= "2017-01-01T00:00:00Z", 
-    eventDate <= "2021-07-23T00:00:00Z",
-  ) |> 
-  galah_group_by(year, phylum) |>
-  atlas_counts() |> 
-  View()
-
 
 # Get all ALA mammals records within Bunyip State Park
 ala_bunyip <- 
@@ -65,20 +42,6 @@ ala_bunyip |>
 ala_bunyip |> 
   filter(genus == "Dama") |>
   View()
-
-# Get all ALA records within LAF project area
-galah_config(email = "hpha0042@student.monash.edu",
-             download_reason_id = 10, verbose = TRUE)
-ala_laf <- 
-  galah_call() |> 
-  galah_geolocate(poly_laf) |> # within LAF project area 
-  galah_filter(!is.na(eventDate),
-               !is,na(speciesGroup)) |> 
-  galah_select(speciesGroup, basisOfRecord, recordedBy, cl22, BASIS_OF_RECORD_INVALID,
-               group = c("taxonomy","basic","event")) |>
-  atlas_occurrences(mint_doi = TRUE) |> 
-  filter(BASIS_OF_RECORD_INVALID == FALSE) # Remove invalid records
-
 
 # Convert to sf object
 ala_bunyip <- ala_bunyip |> 
@@ -101,6 +64,9 @@ ala_sbb_raw$scientificName |> head(1)
 ala_bunyip |> filter(scientificName == "Isoodon obesulus obesulus") |> 
   group_by(lubridate::year(eventDate)) |> 
   summarise(n = n())
+
+
+
 
 
 # VBA --------------------------------------------------------------------------
@@ -126,40 +92,12 @@ vba_fauna_sbb |>
 
 unique(vba_fauna_sbb$COLLECTOR) |> sort()
 
-# TAXON_TYPE
-vba_fauna |> 
-  sf::st_drop_geometry() |>
-  group_by(TAXON_TYPE) |> 
-  summarise(n = n()) |> 
-  arrange(desc(n)) |> View()
-
-vba_fauna |> 
-  sf::st_drop_geometry() |>
-  filter(START_YEAR < 2025) |> # Clean data
-  filter(START_YEAR > 1999) |>
-  ggplot() + 
-  geom_histogram(aes(x = START_YEAR), fill = "lightblue") 
-
-
-
 # PARKRES ----------------------------------------------------------------------
-parkres |> filter(NAME == "Bunyip State Park") 
-parkres |> filter(str_detect(NAME,"Gippsland"))
+parkres |> filter(NAME == "Bunyip State Park") |> View()
 
-# Check Bunyip overlapping Gippsland 
-ggplot() + 
-  geom_sf(data = vic_map) +
-  geom_sf(data = poly_fire_1920, fill = alpha("darkred",0.4)) +
-  geom_sf(data = parkres |> filter(NAME == "Bunyip State Park"), 
-          fill = alpha("orange",0.4)) + 
-  geom_sf(data = parkres |> filter(str_detect(NAME,"Gippsland")), 
-          fill = alpha("limegreen",0.4)) + 
-  coord_sf(xlim = bbox_fire_1920[c("xmin", "xmax")], ylim = bbox_fire_1920[c("ymin", "ymax")]) + # Zoom
-  theme_bw()
 
 # EVC --------------------------------------------------------------------------
 # Plot
 ggplot() +
-  geom_sf(data = vic_map)  
-  # geom_sf(data = evc, fill = "XGROUPNAME")
-
+  geom_sf(data = vic_map) + 
+  geom_sf(data = evc, fill = "XGROUPNAME")
