@@ -91,10 +91,7 @@ get_ala <- function(input_poly = NULL,
     # Remove invalid records
     filter(BASIS_OF_RECORD_INVALID == FALSE) |>
     # Remove columns
-    dplyr::select(-c(BASIS_OF_RECORD_INVALID)) |>
-    # Convert to sf object
-    sf::st_as_sf(coords = c("decimalLongitude", "decimalLatitude")
-                 st_crs(ala_sbb_raw) <- st_crs(input_poly))
+    dplyr::select(-c(BASIS_OF_RECORD_INVALID))
   
   return(df)
 }

@@ -33,3 +33,108 @@ theme_minimal_hpha0042 <- theme_minimal() +
   )
 theme_set(theme_minimal_hpha0042)
 ```
+
+```{r}
+#| label: load-data 
+tar_load(vic_map)
+tar_load(poly_fire_1920)
+tar_load(poly_filter_ala)
+tar_load(ala_sighting)
+```
+
+```{r}
+ala_sighting |> select(speciesGroup) |> distinct()
+```
+
+
+```{r}
+#| label: data-wrangling
+
+# Data Wrangling 
+ala_sighting <- ala_sighting |>
+  # Add column
+  dplyr::mutate(
+    species_group = case_when(
+    class == "Amphibia" ~ "Amphibians",
+    speciesGroup == "Fungi" ~ "Fungi",
+    .default = stringr::str_split_i(speciesGroup, " | ", -1)) 
+  )
+```
+
+### Data aggregation
+
+```{r}
+fire_start_date <- lubridate::ymd("2019-11-21")
+
+ala_sighting |> 
+  sf::st_drop_geometry() |> 
+  group_by(species_group) |> 
+  summarise(n = n())
+
+# only those with ≥100 observations in burnt regions in 
+# the 18 months after fires were included for further analysis
+# selected_species_group <- 
+within <- sf::st_filter(ala_sighting[1000,], poly_fire_1920, .pred = st_intersects)
+
+sf::st_contains(poly_fire_1920, ala_sighting[1000,]) 
+
+ggplot() +
+  geom_sf(data = vic_map, fill = "grey99", color = "grey70") +
+  geom_sf(
+    data = ala_sighting |>
+      st_join(poly_fire_1920, join = st_intersects),
+    aes(fill = species_group),
+    alpha = 0.5
+  ) + 
+# Zoom 
+coord_sf(xlim = st_bbox(poly_filter_ala)[c("xmin", "xmax")] + c(-0.3,1), ylim = st_bbox(poly_filter_ala)[c("ymin", "ymax")] + c(-0.5,0.5))
+
+  
+  sf::st_drop_geometry() |> 
+  filter(
+    eventDate >= fire_start_date & 
+    eventDate <= fire_start_date %m+% months(18)
+  ) |> 
+  group_by(species_group) |> 
+  summarise(n = n()) |> 
+  filter(n >= 100) |>  
+  # pull(species_group)
+  
+
+selected_species_group
+```
+
+Original data: 14 broad taxon groups `species_group`  
+
+
+```{r}
+ggplot() +
+  geom_sf(data = vic_map,
+          fill = "grey99", color = "grey70") +
+  geom_sf(data = poly_fire_1920, fill = alpha("darkred",0.4)) + 
+  geom_sf(data = poly_filter_ala, fill = "transparent", col = "orange", linewidth = 1)
+
+st_contains(st_union(poly_fire_1920), poly_filter_ala)
+st_crop(poly_fire_1920, poly_filter_ala)
+
+# ggplot() +
+#   geom_sf(data = vic_map,
+#           fill = "grey99", color = "grey70") +
+#   geom_sf(
+#     data = ala_sighting |> 
+#       filter(eventDate >= "2019-11-21" & 
+#              eventDate <= ymd("2019-11-21") %m+% months(18)), 
+#     aes(color = species_group), 
+#     alpha = 0.5 , size = 1
+#   ) +
+#   # scale_color_manual(
+#     # values = pal,
+#     # name = "Species Group",
+#     # Legend
+#     # guide = guide_legend(nrow = 1, override.aes = list(size = 4, alpha = 1))
+#     # ) +
+#   # Zoom
+#   # coord_sf(xlim = bbox_laf[c("xmin", "xmax")], ylim = bbox_laf[c("ymin", "ymax")]) + 
+#   labs(subtitle = "Before: Nov 2018 - Oct 2019")
+```
+

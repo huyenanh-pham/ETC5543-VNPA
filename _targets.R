@@ -93,6 +93,7 @@ list(
   # [FFM VIC - Past bushfires](https://www.ffm.vic.gov.au/history-and-incidents/past-bushfires)
   # [Victorian Fires 2019-2020 Map](https://www.ffm.vic.gov.au/__data/assets/pdf_file/0022/500728/Victorian_fires_fire_area_end1920_Victorian-Fires.pdf)
   
+  # Fire 2019/2020 extend (polygon)
   tar_target(poly_fire_1920,
              sf::st_union(fire_history_1920$geometry, by_feature = FALSE)
              ),
@@ -121,7 +122,7 @@ list(
   
   
   
-  # Define boundary of ALA sighting (sf polygon)
+  # [2.1] Define boundary of ALA sighting (sf polygon)
   tar_target(poly_filter_ala,
              sf::st_multipoint(c(
                st_point(c(146.3, -38)), # p1
@@ -134,10 +135,19 @@ list(
              # |> sf::st_intersection(sf::st_union(vic_map))
              ),
   
-  tar_target(ala_sighting,
+  # [2.2] Get raw data from ALA
+  tar_target(ala_sighting_raw,
              get_ala(
                input_poly = poly_filter_ala,
                input_start_date = "2017-01-01T00:00:00Z",
                input_end_date = "2021-07-23T00:00:00Z")
-             )
+             ),
+  
+  # [2.3] Data Wrangling ALA
+  tar_target(ala_sighting,
+             ala_sighting_raw |> 
+             # Convert into sf object
+             sf::st_as_sf(coords = c("decimalLongitude", "decimalLatitude"),
+                          crs = st_crs(vic_map))
+            )
 )

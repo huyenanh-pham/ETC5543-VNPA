@@ -65,7 +65,36 @@ ala_bunyip |> filter(scientificName == "Isoodon obesulus obesulus") |>
   group_by(lubridate::year(eventDate)) |> 
   summarise(n = n())
 
+## Goal: Get ALA data for extended area (East Gippsland) ----------------(start)
+### Function: fucntion.R / get_ala()
+### Target output: ala_sighting
 
+# Define boundary of ALA sighting (sf polygon)
+poly_filter_ala <- sf::st_multipoint(c(
+  st_point(c(146.3, -38)), # p1
+  st_point(c(sf::st_bbox(poly_fire_1920)[["xmax"]], -38)), # p2 
+  st_point(c(sf::st_bbox(poly_fire_1920)[["xmax"]], -35.9)), # p3 
+  st_point(c(146.3, -35.9))  # p4
+)) |>
+  st_cast("POLYGON") |>
+  st_sfc(crs = st_crs(vic_map)) # |> sf::st_intersection(sf::st_union(vic_map))
+
+ggplot() +
+  geom_sf(data = vic_map) +
+  geom_sf(data = poly_filter_ala, fill = "red", alpha = 0.3) +
+  coord_sf(xlim = c(146.3, sf::st_bbox(poly_fire_1920)[["xmax"]]),
+           ylim = c(-38, -35.5))
+
+input_poly <- poly_filter_ala
+input_start_date <- "2017-01-01T00:00:00Z"
+input_end_date <- "2021-07-23T00:00:00Z"
+
+ala_sighting <- get_ala(
+  input_poly = poly_filter_ala,
+  input_start_date = "2017-01-01T00:00:00Z",
+  input_end_date = "2021-07-23T00:00:00Z"
+)
+# -------------------------------------------------------------------------(end)
 
 
 
