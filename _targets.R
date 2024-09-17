@@ -132,7 +132,7 @@ list(
              )) |>
                st_cast("POLYGON") |>
                st_sfc(crs = st_crs(vic_map)) 
-             # |> sf::st_intersection(sf::st_union(vic_map))
+             # sf::st_intersection(sf::st_union(vic_map))
              ),
   
   # [2.2] Get raw data from ALA

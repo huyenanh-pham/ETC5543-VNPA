@@ -5,34 +5,7 @@ date: "12 September 2024"
 bibliography: references.bib
 bibliographystyle: apa
 format:
-  pdf: 
-    fig_caption: true
-    fig_width: 8
-    fig-dpi: 300
-    fig-pos: 'H'
-    keep_tex: true
-    latex_engine: xelatex
-    engine: knitr
-    toc: true
-    toc_depth: 1
-    toc_number: FALSE
-    number-sections: TRUE
-    number-depth: 2
-    papersize: a4
-    geometry:
-      - top = 1cm
-      - bottom = 1.3cm
-      - left = 0.7cm
-      - right = 0.7cm
-      - headsep=22pt
-      - headheight = 11pt
-      - footskip = 20pt
-      - ignorehead
-      - ignorefoot
-      - heightrounded
-    linestretch: 1.25
-    mainfont: Arial
-    sansfont: Arial
+
   html:
     embed-resources: true
     toc: true
@@ -45,6 +18,40 @@ execute:
   message: FALSE
   cache: false
 ---
+
+```{r}
+#| eval: false 
+# yaml render to PDF
+  # pdf: 
+  #   fig_caption: true
+  #   fig_width: 8
+  #   fig-dpi: 300
+  #   fig-pos: 'H'
+  #   keep_tex: true
+  #   latex_engine: xelatex
+  #   engine: knitr
+  #   toc: true
+  #   toc_depth: 1
+  #   toc_number: FALSE
+  #   number-sections: TRUE
+  #   number-depth: 2
+  #   papersize: a4
+  #   geometry:
+  #     - top = 1cm
+  #     - bottom = 1.3cm
+  #     - left = 0.7cm
+  #     - right = 0.7cm
+  #     - headsep=22pt
+  #     - headheight = 11pt
+  #     - footskip = 20pt
+  #     - ignorehead
+  #     - ignorefoot
+  #     - heightrounded
+  #   linestretch: 1.25
+  #   mainfont: Arial
+  #   sansfont: Arial
+```
+
 
 \thispagestyle{empty}
 

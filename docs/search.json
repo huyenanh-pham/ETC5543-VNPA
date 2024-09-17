@@ -1,5 +1,43 @@
 [
   {
+    "objectID": "analysis/eda_LAF_speciesgroup.html#fire",
+    "href": "analysis/eda_LAF_speciesgroup.html#fire",
+    "title": "EDA: Biodiversity sighting in Gippsland",
+    "section": "Fire",
+    "text": "Fire\n\n\n\n\n\n\n\n\nFigure 3: The extension of 2019/2020 megafires across the Gippsland LAF project area.\n\n\n\n\n\nThere were two major outburst of fire in the LAF project area during the megafires 2019/2020. The first one started in 22 November 2019 and the second one started in January 2020. The second outburst was twice more extensive than the first one, reached to more parks and reservation areas. More than 80% of the LAF project area was damaged by the wildfires (Figure 3).",
+    "crumbs": [
+      "Home",
+      "Project proposal",
+      "EDA: Biodiversity sighting in Gippsland"
+    ]
+  },
+  {
+    "objectID": "analysis/eda_LAF_speciesgroup.html#sightings",
+    "href": "analysis/eda_LAF_speciesgroup.html#sightings",
+    "title": "EDA: Biodiversity sighting in Gippsland",
+    "section": "Sightings",
+    "text": "Sightings\n\nWhat are the species groups sighted in Gippsland?\n\n\n\n\n\n\n\n\nFigure 4: Monthly sightings in Gippsland from 2017 to 2021\n\n\n\n\n\nFirst, the analysis of aggregated monthly sighting data reveals a cyclical pattern, with significantly lower sightings during the winter months and higher counts in the summer. As illustrated in (Figure 4), this trend is consistent across multiple years. To gain a more accurate understanding of long-term trends, we then aggregating sighting records by year.\n\n\n\n\n\n\n\n\nFigure 5: The composition of species groups sighted in Gippsland from 2017 to 2021.\n\n\n\n\n\nWhat are the species groups sighted in Gippsland?\nThere are five main species groups sighted in Gippsland LAF project area: Amphibians, Birds, Insects, Mammals, Plants. Species groups with low number of yearly sightings are classified as Others.\nHow does the sighting change over time?\nPrior to the 2019/2020 megafires, Birds sightings dominated the Gippsland region, constituting 84% and 88% of all sightings in 2017 and 2018, respectively. However, post-fire data reveals a shift in the distribution of sightings. While the proportion of Birds sightings decreased, there was a significant increase in sightings of Plants, Mammals and Insects, suggesting an increase in data collection for the ecological recovery research.\n\n\n\n\n\n\n\n\nFigure 6: Daily sightings by species group in Gippsland from 2017 to 2021\n\n\n\n\n\nWhen did we sight these species groups?\nFigure 6 presents the daily sightings by each species group. Birds sightings are more frequent during summer months. In 2017 Mammals sightings, there are two time periods with consistently daily sightings. Since 2019, interest in sighting Mammals spread out more evenly throughout the year. In Plants sightings, there are three outliers with particularly high daily sightings: one in January 2019, the other two in October and November 2020.\n\n\nHow do we sight the species?\n\n\n\n\n\n\n\n\nFigure 7: Data sources and recording basis of the sightings in Gippsland from 2017 to 2021.\n\n\n\n\n\nFigure 7 reveals the top data contributors to be Victorian Biodiversity Atlas (VBA), eBird Australia, BirdLife Australia, Birdata, and iNaturalist Australia. The most contributive organisation, VBA, has its sighting effort distributed across all species groups, while the 2nd and 3th runner-up, eBird Australia and BirdLife Australia, Birdata, mainly focus on sighting Birds. Human Observation is the main basis of recording, accounts for 98% of the total sightings. All Birds sightings are recorded by Human Observation method.\n\n\nWhere are the sightings located?\n\n\n\n\n\n\n\n\nFigure 8: Each individual sighting record a year before and after the wildfires in Gippsland.\n\n\n\n\n\nThe pre-fire Plants sightings were concentrated in the western part of the LAF project area while Birds usually found along the eastern coastal line. A year after the fire, there were significantly more sighting effort of Plants and Mammals in the fire-affected area with some geographical clustering and pattern. The sighting trails of Plants might reflect the trekking route taken by sighter. More Amphibians were sighted along the southern coastal unburned area.\n\n\n\n\n\n\n\n\nFigure 9: Number of species sighted per year in each 20 x 20 m cell within Gippsland from 2018 to 2021.\n\n\n\n\n\nTo assess the species richness (Moore 2013) in Gippsland LAF project area, spatial aggregation is performed using rasterising and operations supported by the sf R package.\nThe project area (132K x 67K m) is divided into grid of 20 x 20 m cells. We aggregate the yearly distinct count of species sighting for each grid cell (i.e. How many distinct species has been found in a cell each year?).\nFigure 9 demonstrates that more species are found in the southern part of the project area. Richness hotspot is located at the south-eastern area (bottom right) where more than 200 species are sighted within a cell. However, more coloured cell appear after the 2019/2020 wildfires does not mean the species richness is higher. This only reflects the increased sighting effort in the both burnt and unburnt area.",
+    "crumbs": [
+      "Home",
+      "Project proposal",
+      "EDA: Biodiversity sighting in Gippsland"
+    ]
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "About this site"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "ETC5543-VNPA",
+    "section": "",
+    "text": "This is a Quarto website.\nTo learn more about Quarto websites visit https://quarto.org/docs/websites."
+  },
+  {
     "objectID": "report/proposal.html",
     "href": "report/proposal.html",
     "title": "Project Proposal: Bandicoots occurence in the Bunyip State Park",
@@ -58,19 +96,5 @@
       "Project proposal",
       "Project Proposal: Bandicoots occurence in the Bunyip State Park"
     ]
-  },
-  {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "ETC5543-VNPA",
-    "section": "",
-    "text": "This is a Quarto website.\nTo learn more about Quarto websites visit https://quarto.org/docs/websites."
-  },
-  {
-    "objectID": "about.html",
-    "href": "about.html",
-    "title": "About",
-    "section": "",
-    "text": "About this site"
   }
 ]
