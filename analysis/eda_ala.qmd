@@ -43,7 +43,7 @@ tar_load(ala_sighting)
 ```
 
 ```{r}
-ala_sighting |> select(speciesGroup) |> distinct()
+ala_sighting |> sf::st_drop_geometry() |> select(speciesGroup) |> distinct() |> arrange()
 ```
 
 
@@ -64,47 +64,40 @@ ala_sighting <- ala_sighting |>
 ### Data aggregation
 
 ```{r}
+# Define important Dates
 fire_start_date <- lubridate::ymd("2019-11-21")
+# fire_start_date %m+% months(18) [1] "2021-05-21"
 
-ala_sighting |> 
+# Crop fire extend 
+poly <- sf::st_crop(st_make_valid(poly_fire_1920), st_make_valid(poly_filter_ala))
+
+# Select species group ---------------------------------------------------------
+# only those with ≥100 observations 
+# [1] in burnt regions 
+# [2] in the 18 months after fires were included for further analysis
+
+ala_sighting_burnt <- 
+  # [1] sighting in burnt regions
+  sf::st_filter( 
+    ala_sighting[c("species_group","eventDate","geometry")], 
+    poly) 
+
+selected_species_group <- ala_sighting_burnt |> 
   sf::st_drop_geometry() |> 
-  group_by(species_group) |> 
-  summarise(n = n())
-
-# only those with ≥100 observations in burnt regions in 
-# the 18 months after fires were included for further analysis
-# selected_species_group <- 
-within <- sf::st_filter(ala_sighting[1000,], poly_fire_1920, .pred = st_intersects)
-
-sf::st_contains(poly_fire_1920, ala_sighting[1000,]) 
-
-ggplot() +
-  geom_sf(data = vic_map, fill = "grey99", color = "grey70") +
-  geom_sf(
-    data = ala_sighting |>
-      st_join(poly_fire_1920, join = st_intersects),
-    aes(fill = species_group),
-    alpha = 0.5
-  ) + 
-# Zoom 
-coord_sf(xlim = st_bbox(poly_filter_ala)[c("xmin", "xmax")] + c(-0.3,1), ylim = st_bbox(poly_filter_ala)[c("ymin", "ymax")] + c(-0.5,0.5))
-
-  
-  sf::st_drop_geometry() |> 
+  # [2] in the 18 months after fires 
   filter(
-    eventDate >= fire_start_date & 
     eventDate <= fire_start_date %m+% months(18)
-  ) |> 
-  group_by(species_group) |> 
-  summarise(n = n()) |> 
-  filter(n >= 100) |>  
-  # pull(species_group)
-  
+  ) |>
+  group_by(species_group) |>
+  summarise(n = n()) |>
+  filter(n >= 100) |>
+  pull(species_group)
 
 selected_species_group
 ```
 
 Original data: 14 broad taxon groups `species_group`  
+Selected species groups: only those with ≥100 observations [1] in burnt regions [2] in the 18 months after fires were included for further analysis
 
 
 ```{r}
@@ -113,28 +106,42 @@ ggplot() +
           fill = "grey99", color = "grey70") +
   geom_sf(data = poly_fire_1920, fill = alpha("darkred",0.4)) + 
   geom_sf(data = poly_filter_ala, fill = "transparent", col = "orange", linewidth = 1)
+```
 
-st_contains(st_union(poly_fire_1920), poly_filter_ala)
-st_crop(poly_fire_1920, poly_filter_ala)
-
-# ggplot() +
-#   geom_sf(data = vic_map,
-#           fill = "grey99", color = "grey70") +
-#   geom_sf(
-#     data = ala_sighting |> 
-#       filter(eventDate >= "2019-11-21" & 
-#              eventDate <= ymd("2019-11-21") %m+% months(18)), 
-#     aes(color = species_group), 
-#     alpha = 0.5 , size = 1
-#   ) +
-#   # scale_color_manual(
-#     # values = pal,
-#     # name = "Species Group",
-#     # Legend
-#     # guide = guide_legend(nrow = 1, override.aes = list(size = 4, alpha = 1))
-#     # ) +
-#   # Zoom
-#   # coord_sf(xlim = bbox_laf[c("xmin", "xmax")], ylim = bbox_laf[c("ymin", "ymax")]) + 
-#   labs(subtitle = "Before: Nov 2018 - Oct 2019")
+```{r}
+ggplot() +
+  geom_sf(data = vic_map,
+          fill = "grey99", color = "grey70") +
+  geom_sf(
+    data = ala_sighting |>
+      filter(eventDate >= "2019-11-21" &
+             eventDate <= ymd("2019-11-21") %m+% months(18)),
+    aes(color = species_group),
+    alpha = 0.5 , size = 1
+  ) +
+  # scale_color_manual(
+    # values = pal,
+    # name = "Species Group",
+    # Legend
+    # guide = guide_legend(nrow = 1, override.aes = list(size = 4, alpha = 1))
+    # ) +
+  # Zoom
+  coord_sf(xlim = st_bbox(poly_filter_ala)[c("xmin", "xmax")], 
+           ylim = st_bbox(poly_filter_ala)[c("ymin", "ymax")]) +
+  labs(subtitle = "Jan 2017 - Jul 2023")
+```
+```{r}
+ggplot() +
+  geom_sf(
+    data = vic_map, fill = "grey99", color = "grey70") +
+  geom_sf(
+    data = filtered,
+    alpha = 0.5 , size = 1
+    ) +
+  geom_sf(data = poly_fire_1920, fill = alpha("darkred",0.4)) +
+  # Zoom
+  coord_sf(xlim = st_bbox(poly_filter_ala)[c("xmin", "xmax")], 
+           ylim = st_bbox(poly_filter_ala)[c("ymin", "ymax")]) +
+  labs(subtitle = "Jan 2017 - Jul 2023")
 ```
 
