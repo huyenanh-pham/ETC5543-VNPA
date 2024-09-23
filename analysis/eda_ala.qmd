@@ -16,7 +16,8 @@ execute:
 ```{r library}
 # Library
 lib <- c("targets","tarchetypes",
-         "tidyverse","sf","galah","tmap","leaflet","plotly")
+         "tidyverse","sf","galah","terra",
+         "tidyterra","tmap","leaflet","plotly")
 invisible(lapply(lib, library, character.only = TRUE))
 rm(lib)
 
@@ -135,7 +136,7 @@ ggplot() +
   geom_sf(
     data = vic_map, fill = "grey99", color = "grey70") +
   geom_sf(
-    data = filtered,
+    data = ala_sighting_burnt,
     alpha = 0.5 , size = 1
     ) +
   geom_sf(data = poly_fire_1920, fill = alpha("darkred",0.4)) +
@@ -143,5 +144,73 @@ ggplot() +
   coord_sf(xlim = st_bbox(poly_filter_ala)[c("xmin", "xmax")], 
            ylim = st_bbox(poly_filter_ala)[c("ymin", "ymax")]) +
   labs(subtitle = "Jan 2017 - Jul 2023")
+```
+
+```{r}
+# Create grid cell
+## Grid bounding box box extend
+bbox_filter_ala <- st_bbox(ala_sighting, crs = sf::st_crs(7844))
+
+## Grid sf object
+grid <- st_make_grid(
+    bbox_filter_ala, 
+    cellsize = c(0.025, 0.025), # degree
+    cellsize = units::as_units(25, "m"), # 25 x 25 m
+    crs = st_crs(vic_map),
+    what = "polygons",
+    square = TRUE
+    )
+grid <- st_sf(grid_id = 1:length(lengths(grid)), grid) # Add grid ID
+
+plot(st_bbox(grid |> filter(grid_id == 1)))
+
+# No of grid: (0.25 x 0.25 degree) 12432
+
+g1 <- sf::st_make_grid(
+  bbox_filter_ala,
+  cellsize = units::as_units(100, "km")) # length unit
+```
+
+```{r}
+## Grid bounding box box extend
+bbox_filter_ala <- sf::st_bbox(ala_sighting, crs = sf::st_crs(7844))
+
+# Create a SpatRaster from scatch 
+x <- terra::rast(
+  # nrows = 100, ncols = 100,
+  xmin = bbox_filter_ala[["xmin"]],
+  xmax = bbox_filter_ala[["xmax"]],
+  ymin = bbox_filter_ala[["ymin"]],
+  ymax = bbox_filter_ala[["ymax"]],
+  crs = "epsg:7844", 
+  resolution = 1/3000,
+)
+
+terra::cellSize(x, unit = "m")
+
+# Number of cells 
+length(terra::cells(x)) # 69027904
+
+# Number of SIGHTINGS in each grid
+countgrid <- terra::rasterize(
+  vect(ala_sighting), 
+  x, 
+  fun = "count", 
+  background = NA)
+
+# plot(countgrid)
+
+ggplot() +
+  geom_sf(
+    data = vic_map, fill = "grey99", color = "grey70") +
+  tidyterra::geom_spatraster(
+    data = countgrid |> filter(!is.na(count)),
+    aes(fill = count)
+    ) +
+  scale_fill_viridis_c(na.value = "transparent") +
+  # Zoom
+  coord_sf(xlim = st_bbox(poly_filter_ala)[c("xmin", "xmax")], 
+           ylim = st_bbox(poly_filter_ala)[c("ymin", "ymax")]) +
+  labs(subtitle = "Count of sightings in each 1000 m^2 grid cell")
 ```
 
