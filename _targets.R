@@ -13,7 +13,7 @@ library(tarchetypes)
 tar_source("R/functions.R")
 
 # Set target-specific options such as packages:
-tar_option_set(packages = c("utils","tidyverse","sf","galah"))
+tar_option_set(packages = c("utils","tidyverse","sf","galah", "terra"))
 
 # End this file with a list of target objects.
 list(
@@ -149,5 +149,26 @@ list(
              # Convert into sf object
              sf::st_as_sf(coords = c("decimalLongitude", "decimalLatitude"),
                           crs = st_crs(vic_map))
-            )
+            ),
+  
+    # Grid bounding box of ala_sighting
+  tar_target(bbox_filter_ala,
+             st_bbox(ala_sighting, crs = sf::st_crs(7844)) # GDA2020 
+             ),
+  
+  # [2.4] Data Wrangling EVC
+  tar_target(
+    # Crop raw evc down to project extend
+    evc_cropped,
+    sf::st_intersection(evc, poly_filter_ala)
+    ),
+  tar_target(
+    # Convert sf EVC polygons to terra::SpatVector
+    evc_cropped_v, 
+    terra::vect(evc_cropped[c("XGROUPNAME", "geometry")])
+    )
+  
+  # tar_target(
+  #   
+  # ),
 )

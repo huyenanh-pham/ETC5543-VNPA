@@ -38,10 +38,12 @@ theme_set(theme_minimal_hpha0042)
 ```{r}
 #| label: load-data 
 tar_load(vic_map)
-tar_load(evc)
+tar_load(evc_cropped)
+tar_load(evc_cropped_v)
 tar_load(poly_fire_1920)
 tar_load(poly_filter_ala)
 tar_load(ala_sighting)
+tar_load(bbox_filter_ala)
 ```
 
 ### Data Wrangling
@@ -50,12 +52,9 @@ tar_load(ala_sighting)
 ala_sighting |> sf::st_drop_geometry() |> select(speciesGroup) |> distinct() |> arrange()
 ```
 
-
 ```{r}
 #| label: data-wrangling
 
-## Grid bounding box extend
-bbox_filter_ala <- st_bbox(ala_sighting, crs = sf::st_crs(7844)) # GDA2020 
 
 # Data Wrangling 
 ala_sighting <- ala_sighting |>
@@ -66,23 +65,15 @@ ala_sighting <- ala_sighting |>
     speciesGroup == "Fungi" ~ "Fungi",
     .default = stringr::str_split_i(speciesGroup, " | ", -1)) 
   )
-
-# Crop raw `evc` down to project extend
-evc_cropped <- sf::st_crop(evc, bbox_filter_ala)
-# Sys.time()
-# evc_cropped_2 <- sf::st_intersection(evc, poly_filter_ala)
-# Sys.time()
 ```
 
-#### EVC Vegetation classes 
+#### EVC Vegetation classes
 
-There are 20 EVC vegetation classes `XGROUPNAME` in the study area.   
+There are 20 EVC vegetation classes `XGROUPNAME` in the study area.
 
 ```{r}
 sort(unique(evc_cropped$XGROUPNAME))
 ```
-
-
 
 ### Data aggregation
 
@@ -119,9 +110,8 @@ selected_species_group <- ala_sighting_burnt |>
 selected_species_group
 ```
 
-Original data: 14 broad taxon groups `species_group`  
-Selected species groups: only those with ≥100 observations [1] in burnt regions [2] in the 18 months after fires were included for further analysis
-
+Original data: 14 broad taxon groups `species_group`\
+Selected species groups: only those with ≥100 observations \[1\] in burnt regions \[2\] in the 18 months after fires were included for further analysis
 
 ```{r}
 ggplot() +
@@ -153,7 +143,9 @@ ggplot() +
            ylim = st_bbox(poly_filter_ala)[c("ymin", "ymax")]) +
   labs(subtitle = "Jan 2017 - Jul 2023")
 ```
+
 ```{r}
+#| fig-caption: "Which sighting records are in the burnt regions?"
 ggplot() +
   geom_sf(
     data = vic_map, fill = "grey99", color = "grey70") +
@@ -168,8 +160,10 @@ ggplot() +
   labs(subtitle = "Jan 2017 - Jul 2023")
 ```
 
-```{r}
-# Create grid cell
+```{r ARCHIVED}
+#| eval: false
+
+# Create grid cell using sf
 
 ## Grid sf object
 grid <- st_make_grid(
@@ -192,21 +186,17 @@ g1 <- sf::st_make_grid(
 ```
 
 ```{r}
-## Grid bounding box box extend
-bbox_filter_ala <- sf::st_bbox(ala_sighting, crs = sf::st_crs(7844))
-
-# Create a SpatRaster from scatch 
-grid <- terra::rast(
-  # nrows = 100, ncols = 100,
-  xmin = bbox_filter_ala[["xmin"]],
-  xmax = bbox_filter_ala[["xmax"]],
-  ymin = bbox_filter_ala[["ymin"]],
-  ymax = bbox_filter_ala[["ymax"]],
-  crs = "epsg:7844", 
-  resolution = 1/3000,
-)
-
-terra::cellSize(grid, unit = "m")
+# Create a SpatRaster grid template from scatch 
+grid_template <- 
+    terra::rast(
+      xmin = bbox_filter_ala[["xmin"]],
+      xmax = bbox_filter_ala[["xmax"]],
+      ymin = bbox_filter_ala[["ymin"]],
+      ymax = bbox_filter_ala[["ymax"]],
+      crs = "epsg:7844", # GDA2020
+      resolution = 1 / 3000
+    )
+terra::cellSize(grid_template, unit = "m")
 
 # Number of cells 
 # length(terra::cells(grid)) # 69027904
@@ -216,7 +206,7 @@ terra::cellSize(grid, unit = "m")
 # Number of SIGHTINGS in each grid
 countgrid <- terra::rasterize(
   vect(ala_sighting), 
-  grid, 
+  grid_template, 
   fun = "count", 
   background = NA)
 
@@ -237,7 +227,6 @@ ggplot() +
   labs(subtitle = "Count of sightings in each 1000 m^2 grid cell")
 ```
 
-
 ```{r}
 # convert sf sighting points to terra::SpatVector
 # v <- terra::vect(ala_sighting[c("recordID","geometry")])
@@ -249,14 +238,11 @@ ggplot() +
 ```
 
 ```{r}
-# convert sf EVC polygons to terra::SpatVector
-evc_cropped_v <- terra::vect(evc_cropped[c("XGROUPNAME","geometry")])
-
 # rasterize EVC polygons XGROUPNAME to each grid cells
 gridcell <- terra::rasterize(
   evc_cropped_v, # SpatVector object
-  grid, # SpatRaster grid cell template
-  field = ""
+  grid_template, # SpatRaster grid cell template
+  field = "XGROUPNAME", # EVC class
   )
 
 # Preview gridcell SpatRaster value
@@ -272,3 +258,9 @@ ggplot() +
   theme(legend.position = "none")
 ```
 
+```{r}
+# Count how many grid cells each EVC class covers? 
+gridcell |> as.data.frame() |>
+  dplyr::group_by(XGROUPNAME) |> 
+  dplyr::summarise(n = n())
+```
