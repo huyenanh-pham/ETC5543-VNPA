@@ -38,10 +38,13 @@ theme_set(theme_minimal_hpha0042)
 ```{r}
 #| label: load-data 
 tar_load(vic_map)
+tar_load(evc)
 tar_load(poly_fire_1920)
 tar_load(poly_filter_ala)
 tar_load(ala_sighting)
 ```
+
+### Data Wrangling
 
 ```{r}
 ala_sighting |> sf::st_drop_geometry() |> select(speciesGroup) |> distinct() |> arrange()
@@ -50,6 +53,9 @@ ala_sighting |> sf::st_drop_geometry() |> select(speciesGroup) |> distinct() |> 
 
 ```{r}
 #| label: data-wrangling
+
+## Grid bounding box extend
+bbox_filter_ala <- st_bbox(ala_sighting, crs = sf::st_crs(7844)) # GDA2020 
 
 # Data Wrangling 
 ala_sighting <- ala_sighting |>
@@ -60,7 +66,23 @@ ala_sighting <- ala_sighting |>
     speciesGroup == "Fungi" ~ "Fungi",
     .default = stringr::str_split_i(speciesGroup, " | ", -1)) 
   )
+
+# Crop raw `evc` down to project extend
+evc_cropped <- sf::st_crop(evc, bbox_filter_ala)
+# Sys.time()
+# evc_cropped_2 <- sf::st_intersection(evc, poly_filter_ala)
+# Sys.time()
 ```
+
+#### EVC Vegetation classes 
+
+There are 20 EVC vegetation classes `XGROUPNAME` in the study area.   
+
+```{r}
+sort(unique(evc_cropped$XGROUPNAME))
+```
+
+
 
 ### Data aggregation
 
@@ -148,8 +170,6 @@ ggplot() +
 
 ```{r}
 # Create grid cell
-## Grid bounding box box extend
-bbox_filter_ala <- st_bbox(ala_sighting, crs = sf::st_crs(7844))
 
 ## Grid sf object
 grid <- st_make_grid(
@@ -176,7 +196,7 @@ g1 <- sf::st_make_grid(
 bbox_filter_ala <- sf::st_bbox(ala_sighting, crs = sf::st_crs(7844))
 
 # Create a SpatRaster from scatch 
-x <- terra::rast(
+grid <- terra::rast(
   # nrows = 100, ncols = 100,
   xmin = bbox_filter_ala[["xmin"]],
   xmax = bbox_filter_ala[["xmax"]],
@@ -186,20 +206,23 @@ x <- terra::rast(
   resolution = 1/3000,
 )
 
-terra::cellSize(x, unit = "m")
+terra::cellSize(grid, unit = "m")
 
 # Number of cells 
-length(terra::cells(x)) # 69027904
+# length(terra::cells(grid)) # 69027904
+# Values of cells 
+# terra::values(grid)
 
 # Number of SIGHTINGS in each grid
 countgrid <- terra::rasterize(
   vect(ala_sighting), 
-  x, 
+  grid, 
   fun = "count", 
   background = NA)
 
 # plot(countgrid)
 
+# Plot
 ggplot() +
   geom_sf(
     data = vic_map, fill = "grey99", color = "grey70") +
@@ -212,5 +235,40 @@ ggplot() +
   coord_sf(xlim = st_bbox(poly_filter_ala)[c("xmin", "xmax")], 
            ylim = st_bbox(poly_filter_ala)[c("ymin", "ymax")]) +
   labs(subtitle = "Count of sightings in each 1000 m^2 grid cell")
+```
+
+
+```{r}
+# convert sf sighting points to terra::SpatVector
+# v <- terra::vect(ala_sighting[c("recordID","geometry")])
+
+# gridcell <- terra::extract(grid, # SpatRaster grid cell template
+#                            v  # SpatVector sighting points
+#                            )
+
+```
+
+```{r}
+# convert sf EVC polygons to terra::SpatVector
+evc_cropped_v <- terra::vect(evc_cropped[c("XGROUPNAME","geometry")])
+
+# rasterize EVC polygons XGROUPNAME to each grid cells
+gridcell <- terra::rasterize(
+  evc_cropped_v, # SpatVector object
+  grid, # SpatRaster grid cell template
+  field = ""
+  )
+
+# Preview gridcell SpatRaster value
+head(gridcell)
+
+# Plot
+ggplot() +
+  geom_spatraster(data = gridcell) +
+  scale_fill_viridis_d(na.value = "transparent") +  # Optional color scale
+  labs(subtitle = "Vegetation class 'XGROUPNAME' of each grid cell",
+       fill = "EVC Name") + 
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
