@@ -67,6 +67,7 @@ list(
              FIRE_SEASON = SEASON) |> 
       mutate(START_DATE = lubridate::ymd(START_DATE))
   ),
+  
   # [2] Park boundaries
   tar_target(parkres,
     sf::read_sf(filepath[2])
@@ -82,7 +83,8 @@ list(
              vba_fauna |> filter(TAXON_ID == 61092)),
   
   ### LAF -----
-  tar_target(fire_history_1920, fire_history |>
+  tar_target(fire_history_1920, 
+             fire_history |>
                filter(between(
                  START_DATE,
                  lubridate::ymd("2019-11-21"), # Fire Start Date
@@ -122,7 +124,7 @@ list(
   
   
   
-  # [2.1] Define boundary of ALA sighting (sf polygon)
+  # [2.1] Define boundary of ALA sighting (sf polygon) = eas (East Gippsland Shire)
   tar_target(poly_filter_ala,
              sf::st_multipoint(c(
                st_point(c(146.3, -38)), # p1
@@ -166,8 +168,17 @@ list(
     # Convert sf EVC polygons to terra::SpatVector
     evc_cropped_v, 
     terra::vect(evc_cropped[c("XGROUPNAME", "geometry")])
-    )
+    ),
   
+  # [2.5] Data Wrangling Fire
+  tar_target(
+    # Fire history in the East Gippsland Shire (eas)
+    fire_history_eas,
+    fire_history |>
+      dplyr::filter(FIRE_SEASON >= 1970) |>
+      dplyr::select(FIRE_SEASON, FIRE_NO, START_DATE, FIRE_SVRTY, geometry) |> 
+      sf::st_intersection(poly_filter_ala)
+  )
   # tar_target(
   #   
   # ),
