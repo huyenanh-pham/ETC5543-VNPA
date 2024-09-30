@@ -44,6 +44,8 @@ tar_load(poly_fire_1920)
 tar_load(poly_filter_ala)
 tar_load(ala_sighting)
 tar_load(bbox_filter_ala)
+e
+tar_load(fire_history_eas)
 ```
 
 ### Data Wrangling
@@ -54,7 +56,6 @@ ala_sighting |> sf::st_drop_geometry() |> select(speciesGroup) |> distinct() |> 
 
 ```{r}
 #| label: data-wrangling
-
 
 # Data Wrangling 
 ala_sighting <- ala_sighting |>
@@ -77,10 +78,12 @@ sort(unique(evc_cropped$XGROUPNAME))
 
 ### Data aggregation
 
+#### Select species_groups
+
 ```{r}
 # Define important Dates
-fire_start_date <- lubridate::ymd("2019-11-21")
-# fire_start_date %m+% months(18) [1] "2021-05-21"
+fire1920_start_date <- lubridate::ymd("2019-11-21")
+# fire1920_start_date %m+% months(18) [1] "2021-05-21"
 
 # Crop fire extend 
 poly <- sf::st_crop(st_make_valid(poly_fire_1920), st_make_valid(poly_filter_ala))
@@ -100,7 +103,7 @@ selected_species_group <- ala_sighting_burnt |>
   sf::st_drop_geometry() |> 
   # [2] in the 18 months after fires 
   filter(
-    eventDate <= fire_start_date %m+% months(18)
+    eventDate <= fire1920_start_date %m+% months(18)
   ) |>
   group_by(species_group) |>
   summarise(n = n()) |>
@@ -162,8 +165,7 @@ ggplot() +
 
 ```{r ARCHIVED}
 #| eval: false
-
-# Create grid cell using sf
+# Create grid cell using sf ---------------------------------------------------
 
 ## Grid sf object
 grid <- st_make_grid(
@@ -179,11 +181,13 @@ grid <- st_sf(grid_id = 1:length(lengths(grid)), grid) # Add grid ID
 plot(st_bbox(grid |> filter(grid_id == 1)))
 
 # No of grid: (0.25 x 0.25 degree) 12432
-
 g1 <- sf::st_make_grid(
   bbox_filter_ala,
   cellsize = units::as_units(100, "km")) # length unit
+# ------------------------------------------------------------------------------
 ```
+
+#### Rasterise EVC to each grid cell
 
 ```{r}
 # Create a SpatRaster grid template from scatch 
@@ -234,7 +238,6 @@ ggplot() +
 # gridcell <- terra::extract(grid, # SpatRaster grid cell template
 #                            v  # SpatVector sighting points
 #                            )
-
 ```
 
 ```{r}
@@ -264,3 +267,67 @@ gridcell |> as.data.frame() |>
   dplyr::group_by(XGROUPNAME) |> 
   dplyr::summarise(n = n())
 ```
+
+#### Sighting 
+
+```{r}
+selected_species_group <-  c("Amphibians", "Arthropods", "Birds", "Crustaceans", "Fishes", "Fungi", "Insects", "Mammals", "Molluscs", "Plants", "Reptiles")
+
+Sys.time()
+sighting <- ala_sighting |>
+  # Subset necessary columns
+  dplyr::select(recordID, species_group, eventDate, geometry) |> 
+  # Subset records
+  dplyr::filter(species_group %in% selected_species_group) |>
+  dplyr::mutate(eventDate = lubridate::as_date(eventDate, tz = "UTC")) |> 
+  # Join sighting POINTS with fire POLYGON
+  sf::st_join(fire_history_eas,
+          join = st_within, left = TRUE) |> 
+  # Get the latest fire record of each sighting
+  dplyr::filter(is.na(FIRE_START_DATE) | FIRE_START_DATE <= eventDate) |>
+  dplyr::group_by(recordID) |> 
+  dplyr::filter(is.na(FIRE_START_DATE) | FIRE_START_DATE == max(FIRE_START_DATE)) |> 
+  ungroup() |> 
+  # Add columns ---------
+  dplyr::mutate(
+    before_after_fire = case_when(
+      eventDate < fire1920_start_date ~ "before",
+      eventDate >= fire1920_start_date ~ "after" ),
+    burnt = if_else(!is.na(FIRE_START_DATE) & ymd(FIRE_START_DATE) < eventDate, 
+      "burnt", 
+      "unburnt"),
+    sample = paste(burnt, before_after_fire, sep = "_"),
+    time_since_fire_days = if_else(burnt == "burnt",
+      as.numeric(lubridate::ymd(eventDate) - lubridate::ymd(FIRE_START_DATE)),
+      NA)
+  )
+  # ---------------------
+Sys.time()
+  # Old code ----
+  # arrange(recordID, desc(FIRE_START_DATE), desc(FIRE_NO)) |> 
+  # group_by(recordID) |>
+  # dplyr::slice_head(n=1)
+  # ---------------------
+
+# CHECKING: nrow(sighting) < nrow(ala_sighting) <- excluded FIRE_START_DATE > eventDate, only selected_species_group
+
+
+sighting_100 <- head(sighting,1000) |> 
+  
+
+# sighting_100 |> 
+#   select(recordID, eventDate, FIRE_START_DATE,before_after_fire, burnt, sample, time_since_fire) |> 
+#   filter(burnt == "unburnt") |>
+#   # filter(!is.na(FIRE_START_DATE)) |>
+#   head(100)
+```
+
+#### Fire
+```{r}
+
+# colnames(fire_history_eas)
+# > [1] "FIRE_SEASON","FIRE_NO","FIRE_START_DATE","FIRE_SVRTY","geometry" 
+# nrow(fire_history_eas) 
+# > [1] 537303 records
+```
+

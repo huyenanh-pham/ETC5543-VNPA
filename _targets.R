@@ -62,10 +62,10 @@ list(
     sf::read_sf(filepath[1]) |>
       select("FIRETYPE", "SEASON", "FIRE_NO", "NAME", "STRTDATIT", "FIRE_SVRTY", "FIREKEY", "ACCURACY", "DSE_ID", "CFA_ID", "geometry") |> 
       filter(SEASON > 1969) |> 
-      rename(START_DATE = STRTDATIT, 
+      rename(FIRE_START_DATE = STRTDATIT, 
              FIRE_NAME = NAME,
              FIRE_SEASON = SEASON) |> 
-      mutate(START_DATE = lubridate::ymd(START_DATE))
+      mutate(FIRE_START_DATE = lubridate::ymd(FIRE_START_DATE))
   ),
   
   # [2] Park boundaries
@@ -86,7 +86,7 @@ list(
   tar_target(fire_history_1920, 
              fire_history |>
                filter(between(
-                 START_DATE,
+                 FIRE_START_DATE,
                  lubridate::ymd("2019-11-21"), # Fire Start Date
                  lubridate::ymd("2020-02-29")  # Fire End Date
                ))
@@ -176,7 +176,7 @@ list(
     fire_history_eas,
     fire_history |>
       dplyr::filter(FIRE_SEASON >= 1970) |>
-      dplyr::select(FIRE_SEASON, FIRE_NO, START_DATE, FIRE_SVRTY, geometry) |> 
+      dplyr::select(FIRE_SEASON, FIRE_NO, FIRE_START_DATE, FIRE_SVRTY, geometry) |> 
       sf::st_intersection(poly_filter_ala)
   )
   # tar_target(
