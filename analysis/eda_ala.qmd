@@ -39,7 +39,6 @@ theme_set(theme_minimal_hpha0042)
 #| label: load-data 
 tar_load(vic_map)
 tar_load(evc_cropped)
-tar_load(evc_cropped_v)
 tar_load(poly_fire_1920)
 tar_load(poly_filter_ala)
 tar_load(ala_sighting)
@@ -187,60 +186,74 @@ g1 <- sf::st_make_grid(
 # ------------------------------------------------------------------------------
 ```
 
-#### Rasterise EVC to each grid cell
+#### gridcell: Rasterise EVC to each grid cell
 
 ```{r}
-# Create a SpatRaster grid template from scatch 
-grid_template <- 
-    terra::rast(
-      xmin = bbox_filter_ala[["xmin"]],
-      xmax = bbox_filter_ala[["xmax"]],
-      ymin = bbox_filter_ala[["ymin"]],
-      ymax = bbox_filter_ala[["ymax"]],
-      crs = "epsg:7844", # GDA2020
-      resolution = 1 / 3000
-    )
-terra::cellSize(grid_template, unit = "m")
+# Create a SpatRaster grid template from scratch 
+grid_template <- terra::rast(
+  x = evc_cropped,
+  crs = "epsg:7844", # GDA2020
+  resolution = 1 / 3000
+)
+# Assign gridcell_id 
+# terra::values(grid_template) <- 1:ncell(grid_template) # 68,950,350 rows
+
+# names(grid_template) # [1] "lyr.1"
+# Rename 
+# grid_template <- grid_template |> 
+#   tidyterra::rename(gridcell_id = lyr.1)
+
+# head(as.data.frame(grid_template),100)
+
+# Checking
+# terra::cellSize(grid_template, unit = "m")
 
 # Number of cells 
-# length(terra::cells(grid)) # 69027904
+# length(terra::cells(grid_template)) 
 # Values of cells 
-# terra::values(grid)
+# terra::values(grid_template)
+
+
+# Checking Plot
+# ggplot() +
+#   geom_sf(
+#     data = vic_map, fill = "grey99", color = "grey70") +
+#   tidyterra::geom_spatraster(
+#     data = grid_template,
+#     aes(fill = lyr.1)
+#     ) +
+#   scale_fill_viridis_c(na.value = "transparent") +
+#   # Zoom
+#   coord_sf(xlim = st_bbox(poly_filter_ala)[c("xmin", "xmax")],
+#            ylim = st_bbox(poly_filter_ala)[c("ymin", "ymax")]) +
+#   labs(subtitle = "Check gridcell_id")
 
 # Number of SIGHTINGS in each grid
-countgrid <- terra::rasterize(
-  vect(ala_sighting), 
-  grid_template, 
-  fun = "count", 
-  background = NA)
+# countgrid <- terra::rasterize(
+#   vect(ala_sighting), 
+#   grid_template, 
+#   fun = "count", 
+#   background = NA)
 
-# plot(countgrid)
-
-# Plot
-ggplot() +
-  geom_sf(
-    data = vic_map, fill = "grey99", color = "grey70") +
-  tidyterra::geom_spatraster(
-    data = countgrid |> filter(!is.na(count)),
-    aes(fill = count)
-    ) +
-  scale_fill_viridis_c(na.value = "transparent") +
-  # Zoom
-  coord_sf(xlim = st_bbox(poly_filter_ala)[c("xmin", "xmax")], 
-           ylim = st_bbox(poly_filter_ala)[c("ymin", "ymax")]) +
-  labs(subtitle = "Count of sightings in each 1000 m^2 grid cell")
+# Checking Plot
+# ggplot() +
+#   geom_sf(
+#     data = vic_map, fill = "grey99", color = "grey70") +
+#   tidyterra::geom_spatraster(
+#     data = countgrid |> filter(!is.na(count)),
+#     aes(fill = count)
+#     ) +
+#   scale_fill_viridis_c(na.value = "transparent") +
+#   # Zoom
+#   coord_sf(xlim = st_bbox(poly_filter_ala)[c("xmin", "xmax")],
+#            ylim = st_bbox(poly_filter_ala)[c("ymin", "ymax")]) +
+#   labs(subtitle = "Count of sightings in each 1000 m^2 grid cell")
 ```
 
 ```{r}
-# convert sf sighting points to terra::SpatVector
-# v <- terra::vect(ala_sighting[c("recordID","geometry")])
+# Convert sf EVC polygons to terra::SpatVector
+evc_cropped_v <- terra::vect(evc_cropped[c("XGROUPNAME", "geometry")])
 
-# gridcell <- terra::extract(grid, # SpatRaster grid cell template
-#                            v  # SpatVector sighting points
-#                            )
-```
-
-```{r}
 # rasterize EVC polygons XGROUPNAME to each grid cells
 gridcell <- terra::rasterize(
   evc_cropped_v, # SpatVector object
@@ -251,7 +264,7 @@ gridcell <- terra::rasterize(
 # Preview gridcell SpatRaster value
 head(gridcell)
 
-# Plot
+# Checking Plot
 ggplot() +
   geom_spatraster(data = gridcell) +
   scale_fill_viridis_d(na.value = "transparent") +  # Optional color scale
@@ -262,10 +275,18 @@ ggplot() +
 ```
 
 ```{r}
+#| eval: false
 # Count how many grid cells each EVC class covers? 
-gridcell |> as.data.frame() |>
+gridcell |> as.data.frame() |> # only retain cells with !is.na(XGROUPNAME)
+  rownames_to_column() |> 
+  select(rowname) |> unique() |> nrow()
   dplyr::group_by(XGROUPNAME) |> 
   dplyr::summarise(n = n())
+
+gridcell_df <- terra::as.data.frame(gridcell, cells = TRUE) |> 
+  dplyr::mutate(XGROUPNAME = as.character(XGROUPNAME)) 
+# nrow(gridcell_df)
+# 35,289,585 rows
 ```
 
 #### Sighting 
@@ -303,23 +324,28 @@ sighting <- ala_sighting |>
   )
   # ---------------------
 Sys.time()
-  # Old code ----
-  # arrange(recordID, desc(FIRE_START_DATE), desc(FIRE_NO)) |> 
-  # group_by(recordID) |>
-  # dplyr::slice_head(n=1)
-  # ---------------------
-
 # CHECKING: nrow(sighting) < nrow(ala_sighting) <- excluded FIRE_START_DATE > eventDate, only selected_species_group
 
 
-sighting_100 <- head(sighting,1000) |> 
-  
 
-# sighting_100 |> 
-#   select(recordID, eventDate, FIRE_START_DATE,before_after_fire, burnt, sample, time_since_fire) |> 
-#   filter(burnt == "unburnt") |>
-#   # filter(!is.na(FIRE_START_DATE)) |>
-#   head(100)
+
+# sighting is an `sf` point object with 2 columns: recordID, geometry
+# gridcell is a `terra` SpatRaster object with 1 column: XGROUPNAME
+# How to get each grid cell ID for each sighting's record? 
+
+# Convert sf point to terra SpatVector
+sighting_v <- terra::vect(sighting)
+
+# Extract Vegetation class for each sighting record
+sighting_gridcell <- terra::extract(
+  x = gridcell,
+  y = sighting_v,
+  cells = TRUE
+  # ID = TRUE # the first column returned has the IDs (record numbers) of y
+)
+sighting_gridcell_df <- terra::as.data.frame(sighting_gridcell, geom=NULL)
+
+length(unique(sighting_gridcell_df$cell)) # 55784 unique grid cell
 ```
 
 #### Fire

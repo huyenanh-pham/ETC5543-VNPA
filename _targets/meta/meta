@@ -24,6 +24,7 @@ parkres|stem|c5bab485f8ba57af|3969cef355f8e49e|3ea1cd67f44ceb58|-2139326057||t19
 poly_filter_ala|stem|314f414fca1cd8a4|9fdb9f111e40514b|c90728b661c3416b|-1486900175||t19983.0458528784s|0f70dd7090ffbd55|728|rds|local|vector|||0||
 poly_fire_1920|stem|8b6d63de72dba286|507c1ffc311bb350|7a28706474618410|1737558613||t19992.1993277412s|d6a45fcd225cea51|2091726|rds|local|vector|||177.28||
 poly_laf|stem|3c3fce5f7168edee|55a0d96cdc4caec6|5aa1e47d72a545aa|1994945883||t19971.2117750236s|a4677bedb1fb1cdf|724|rds|local|vector|||0||
+selected_species_group|stem|c7f064e56225f485|d501dd690b9c598a|2c530c1562a7fbd1|-1709307885||t19996.2697862275s|8c397a474f1bcd79|148|rds|local|vector|||3.06||
 vba_fauna|stem|be51cd75cd61d5dd|b17cff74b2bf589d|ac3f1b8fc7c7706a|-567859376||t19952.1014057428s|2d5f0969c2cea589|307468475|rds|local|vector|||7.4||
 vba_fauna_filepaths|stem|5dbde7c7dae7ff37|a545e67091f33dac|2c530c1562a7fbd1|-325423906||t19947.2959089805s|87fddfa2a4a78bf2|213|rds|local|vector|||2.14|package tidyr was built under R version 4.3.3. package stringr was built under R version 4.3.3|
 vba_fauna_listOfShp|stem|f48c762d4c55def7|3e11f9699d354c0a|3e4eb307453a06c5|488361920||t19952.099662199s|c2571c22d6964136|307544191|rds|local|vector|||176.36||

@@ -137,7 +137,7 @@ list(
              # sf::st_intersection(sf::st_union(vic_map))
              ),
   
-  # [2.2] Get raw data from ALA
+  # [2.2] Get Raw ALA Sighting data
   tar_target(ala_sighting_raw,
              get_ala(
                input_poly = poly_filter_ala,
@@ -145,7 +145,7 @@ list(
                input_end_date = "2021-07-23T00:00:00Z")
              ),
   
-  # [2.3] Data Wrangling ALA
+  # [2.3] Data Wrangling Raw ALA Sighting 
   tar_target(ala_sighting,
              ala_sighting_raw |> 
              # Convert into sf object
@@ -164,11 +164,6 @@ list(
     evc_cropped,
     sf::st_intersection(evc, poly_filter_ala)
     ),
-  tar_target(
-    # Convert sf EVC polygons to terra::SpatVector
-    evc_cropped_v, 
-    terra::vect(evc_cropped[c("XGROUPNAME", "geometry")])
-    ),
   
   # [2.5] Data Wrangling Fire
   tar_target(
@@ -178,7 +173,15 @@ list(
       dplyr::filter(FIRE_SEASON >= 1970) |>
       dplyr::select(FIRE_SEASON, FIRE_NO, FIRE_START_DATE, FIRE_SVRTY, geometry) |> 
       sf::st_intersection(poly_filter_ala)
+  ),
+  
+  # [2.6]
+  tar_target(
+    # Select species_groups
+    selected_species_group,
+    c("Amphibians", "Arthropods", "Birds", "Crustaceans", "Fishes", "Fungi", "Insects", "Mammals", "Molluscs", "Plants", "Reptiles")
   )
+  
   # tar_target(
   #   
   # ),
