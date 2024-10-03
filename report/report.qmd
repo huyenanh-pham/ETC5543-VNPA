@@ -1,0 +1,86 @@
+---
+title: "Biodiversity Analysis in East Gippsland Before and After the 2019/2020 Wildfires"
+editor: source
+author:
+- name: Huyen-Anh Pham
+  degrees: ???
+email: hpha0042@student.monash.edu
+organization: Monash University
+bibliography: references.bib
+format: report-pdf
+execute: 
+  warning: false
+  message: false
+---
+
+# Introduction
+
+In a famous paper, @BC64 introduced a family of transformations \dots
+
+```{r}
+#| label: fig-density
+#| fig-cap: Simulated data from a N(0,1) distribution.
+library(tidyverse)
+set.seed(2022-12-20)
+df <- tibble(x = rnorm(200))
+df |>
+  ggplot(aes(x=x)) +
+  geom_density(bw = "SJ") +
+  geom_rug()
+```
+
+@fig-density shows a kernel density estimate of simulated data from a N(0,1) distribution. The sample variance is given by
+$$
+  s^2 = \frac{1}{n-1} \sum_{i=1}^n (x_i-\bar{x})^2 = `r round(sd(df$x), 2)`.
+$$ {#eq-s2}
+Note that @eq-s2 is an unbiased estimate of the variance, but it is not the maximum likelihood estimate [@Rice2007, p.269].
+
+# Abstract
+<!-- Title and abstract (5%)
+• Title is appropriate and captures the essence of the analysis.
+• Abstract or summary is well written and contains key information: aims, methods, data, findings, etc. -->
+
+
+
+# Background and Motivation  
+<!-- Background, motivation (15%) -->
+<!-- • Background is clearly outlined, and the analysis is well motivated. -->
+
+This analysis aims to investigate the impact of the 2019/2020 bushfires on biodiversity in East Gippsland, Victoria. The 2019/2020 bushfires were one of the most devastating bushfires in Australia's history, burning over 1.5 million hectares of land in Victoria alone. The fires had a significant impact on the biodiversity of the region, with many species of flora and fauna being threatened or endangered. This analysis will use spatial data on fire history, vegetation cover, and species sightings to assess the impact of the fires on biodiversity in East Gippsland. The analysis will focus on the changes in species diversity and distribution before and after the fires, and will also investigate the relationship between fire severity and biodiversity loss. The results of this analysis will provide valuable insights into the impact of the 2019/2020 bushfires on biodiversity in East Gippsland, and will help inform conservation efforts in the region.
+
+
+# Objectives  
+
+<!-- Objectives, significance (15%)
+• Analysis objectives are clearly stated, with brief information on the methods used, the data, etc.
+• The significance and contributions of the analysis and/or methodology employed are clearly articulated and
+well-argued, and any novel features are outlined. -->
+
+# Methodology  
+<!-- Methodology, data, results, discussion (40%)
+(Note: Most reports will not satisfy all of these points. Each report will be marked using an appropriate subset.)
+• The methodology of the analysis is presented clearly.
+• The methods used are appropriate for achieving the analysis aims, and any data limitations are clearly explained.
+• Some form of diagnostics or robustness discussion/test of the method is provided.
+• The conceptual/methodological complexity, the skills that the student learned from the work, the difficulties of
+the tasks completed, the workload undertaken, and aspects of innovation/novelty of the analysis.
+• Contributions in data collection, processing, and visualisation.
+• Contributions in coding for data processing, modelling and analysis.
+• The functional aspects of the Shiny app or other interactive tool is explained.
+• Results are thoughtfully and constructively discussed, with links to objectives and insights.
+• All data sources and data related work are clearly described either in main text or appendix.
+• Designs for any Monte Carlo simulations are clearly described.
+• Any main computation algorithms are clearly laid out or referred to source references.
+• Software used is cited with links provided if possible.
+-->
+
+# Results
+
+# Discussion
+
+# Conclusion  
+<!-- Conclusion (10%)
+• Highlights of interesting results/findings.
+• Description of any policy/practical implications/significance of the analysis, linking back to the objectives.
+• Limitations, caveats and future analysis. -->
+
