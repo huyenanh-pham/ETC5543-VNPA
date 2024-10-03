@@ -43,7 +43,7 @@ tar_load(poly_fire_1920)
 tar_load(poly_filter_ala)
 tar_load(ala_sighting)
 tar_load(bbox_filter_ala)
-e
+
 tar_load(fire_history_eas)
 ```
 
@@ -63,8 +63,13 @@ ala_sighting <- ala_sighting |>
     species_group = case_when(
     class == "Amphibia" ~ "Amphibians",
     speciesGroup == "Fungi" ~ "Fungi",
-    .default = stringr::str_split_i(speciesGroup, " | ", -1)) 
+    .default = stringr::str_split_i(speciesGroup, " | ", -1)),
+    eventDate = lubridate::as_date(eventDate, tz = "UTC")
   )
+
+# Define important Dates
+fire1920_start_date <- lubridate::ymd("2019-11-21")
+# fire1920_start_date %m+% months(18) [1] "2021-05-21"
 ```
 
 #### EVC Vegetation classes
@@ -80,10 +85,6 @@ sort(unique(evc_cropped$XGROUPNAME))
 #### Select species_groups
 
 ```{r}
-# Define important Dates
-fire1920_start_date <- lubridate::ymd("2019-11-21")
-# fire1920_start_date %m+% months(18) [1] "2021-05-21"
-
 # Crop fire extend 
 poly <- sf::st_crop(st_make_valid(poly_fire_1920), st_make_valid(poly_filter_ala))
 
@@ -95,14 +96,14 @@ poly <- sf::st_crop(st_make_valid(poly_fire_1920), st_make_valid(poly_filter_ala
 ala_sighting_burnt <- 
   # [1] sighting in burnt regions
   sf::st_filter( 
-    ala_sighting[c("species_group","eventDate","geometry")], 
+    ala_sighting[c("species_group","sighting_date","geometry")], 
     poly) 
 
 selected_species_group <- ala_sighting_burnt |> 
   sf::st_drop_geometry() |> 
   # [2] in the 18 months after fires 
   filter(
-    eventDate <= fire1920_start_date %m+% months(18)
+    sighting_date <= fire1920_start_date %m+% months(18)
   ) |>
   group_by(species_group) |>
   summarise(n = n()) |>
@@ -129,8 +130,8 @@ ggplot() +
           fill = "grey99", color = "grey70") +
   geom_sf(
     data = ala_sighting |>
-      filter(eventDate >= "2019-11-21" &
-             eventDate <= ymd("2019-11-21") %m+% months(18)),
+      filter(sighting_date >= "2019-11-21" &
+             sighting_date <= ymd("2019-11-21") %m+% months(18)),
     aes(color = species_group),
     alpha = 0.5 , size = 1
   ) +
@@ -186,7 +187,7 @@ g1 <- sf::st_make_grid(
 # ------------------------------------------------------------------------------
 ```
 
-#### gridcell: Rasterise EVC to each grid cell
+#### gridcell
 
 ```{r}
 # Create a SpatRaster grid template from scratch 
@@ -297,41 +298,45 @@ selected_species_group <-  c("Amphibians", "Arthropods", "Birds", "Crustaceans",
 Sys.time()
 sighting <- ala_sighting |>
   # Subset necessary columns
-  dplyr::select(recordID, species_group, eventDate, geometry) |> 
+  dplyr::select(sighting_id = recordID, species_group, sighting_date = eventDate, sighting_geometry = geometry) |> 
   # Subset records
   dplyr::filter(species_group %in% selected_species_group) |>
-  dplyr::mutate(eventDate = lubridate::as_date(eventDate, tz = "UTC")) |> 
-  # Join sighting POINTS with fire POLYGON
-  sf::st_join(fire_history_eas,
+  # Join sighting POINTS with fire POLYGONS
+  sf::st_join(fire_history_eas |> janitor::clean_names(),
           join = st_within, left = TRUE) |> 
   # Get the latest fire record of each sighting
-  dplyr::filter(is.na(FIRE_START_DATE) | FIRE_START_DATE <= eventDate) |>
-  dplyr::group_by(recordID) |> 
-  dplyr::filter(is.na(FIRE_START_DATE) | FIRE_START_DATE == max(FIRE_START_DATE)) |> 
-  ungroup() |> 
+  dplyr::filter(is.na(fire_start_date) | fire_start_date <= sighting_date) |>
+  dplyr::group_by(sighting_id) |> 
+  dplyr::filter(is.na(fire_start_date) | fire_start_date == max(fire_start_date)) |> 
+  dplyr::ungroup() |> 
+  # Join sighting POINTS with with EVC POLYGONS
+  st_join(evc_cropped |> select(evc_group = XGROUPNAME) |> janitor::clean_names(),
+          join = st_within, left = TRUE) |> 
+  # Exclude records without evc_group 
+  dplyr::filter(!is.na(evc_group)) |>
   # Add columns ---------
   dplyr::mutate(
     before_after_fire = case_when(
-      eventDate < fire1920_start_date ~ "before",
-      eventDate >= fire1920_start_date ~ "after" ),
-    burnt = if_else(!is.na(FIRE_START_DATE) & ymd(FIRE_START_DATE) < eventDate, 
+      sighting_date < fire1920_start_date ~ "before",
+      sighting_date >= fire1920_start_date ~ "after" ),
+    burnt = if_else(!is.na(fire_start_date) & ymd(fire_start_date) < sighting_date, 
       "burnt", 
       "unburnt"),
     sample = paste(burnt, before_after_fire, sep = "_"),
     time_since_fire_days = if_else(burnt == "burnt",
-      as.numeric(lubridate::ymd(eventDate) - lubridate::ymd(FIRE_START_DATE)),
+      as.numeric(lubridate::ymd(sighting_date) - lubridate::ymd(fire_start_date)),
       NA)
-  )
-  # ---------------------
+  ) 
+  # --------------------- 
 Sys.time()
-# CHECKING: nrow(sighting) < nrow(ala_sighting) <- excluded FIRE_START_DATE > eventDate, only selected_species_group
 
+# CHECKING: nrow(sighting) < nrow(ala_sighting) <- excluded FIRE_START_DATE > sighting_date, only selected_species_group
 
+# CHECKING: How many sighting records with NA evc_group? 
+# nrow(sighting |> filter(is.na(evc_group))) # 120,234 rows
 
-
-# sighting is an `sf` point object with 2 columns: recordID, geometry
-# gridcell is a `terra` SpatRaster object with 1 column: XGROUPNAME
-# How to get each grid cell ID for each sighting's record? 
+# --------------------------------------------------------------------------------------
+# Solution 1: sighting + (evc + grid_tempalte) = sighting + gridcell = sighting_gridcell
 
 # Convert sf point to terra SpatVector
 sighting_v <- terra::vect(sighting)
@@ -346,7 +351,69 @@ sighting_gridcell <- terra::extract(
 sighting_gridcell_df <- terra::as.data.frame(sighting_gridcell, geom=NULL)
 
 length(unique(sighting_gridcell_df$cell)) # 55784 unique grid cell
+# --------------------------------------------------------------------------------------
+
+
+# Solution 2: (sighting + evc) + grid_template = sighting_gridcell 
+
+# Create a SpatRaster grid template from scratch 
+grid_template <- terra::rast(
+  x = sighting,
+  crs = "epsg:7844", # GDA2020
+  resolution = 1 / 3000
+)
+# Assign gridcell_id 
+# terra::values(grid_template) <- 1:ncell(grid_template) # 68,401,743 rows
+
+# Convert sf point to terra SpatVector
+sighting_v <- terra::vect(sighting)
+
+# Rasterise sighting sf POINTS to each grid cells (SpatRaster)
+gridcell <- terra::rasterize(
+  sighting_v, # SpatVector object
+  grid_template, # SpatRaster grid cell template
+  field = c("sighting_id"), # EVC class
+  )
+
+# Extract Vegetation class for each sighting record
+sighting_gridcell <- terra::extract(
+  x = gridcell,
+  y = sighting_v,
+  cells = TRUE
+  # ID = TRUE # the first column returned has the IDs (record numbers) of y
+) |> 
+  dplyr::mutate(sighting_id = as.character(sighting_id))
+
+sighting_2 <- sighting |> 
+  inner_join(sighting_gridcell, by = c("sighting_id"))
+
+# Preview gridcell SpatRaster value
+# as.matrix(gridcell) |> as.data.frame() |> nrow()
+# 
+# terra::as.data.frame(gridcell) |> 
+#   # tibble::rownames_to_column() |> 
+#   group_by(rowname) |> 
+#   summarise(n=n()) |> 
+#   arrange(desc(n))
 ```
+
+```{r}
+#| eval: false 
+# CHECKING PLOT: Why some sighting_id do not have evc_group? 
+ggplot() + 
+  geom_sf(data = evc_cropped, 
+          aes(fill = XGROUPNAME), col = "transparent") + 
+  geom_sf(data = sighting |> select(c(sighting_id, sighting_geometry, evc_group)) |> filter(is.na(evc_group)),
+          ) +
+  theme(legend.position = "none")
+
+sighting |> 
+  select(c(sighting_id, sighting_geometry, evc_group,species_group)) |> 
+  filter(is.na(evc_group)) |> 
+  group_by(species_group) |> 
+  summarise(n = n())
+```
+
 
 #### Fire
 ```{r}
