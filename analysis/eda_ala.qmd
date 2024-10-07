@@ -338,7 +338,7 @@ Sys.time()
 # --------------------------------------------------------------------------------------
 # Solution 1: sighting + (evc + grid_tempalte) = sighting + gridcell = sighting_gridcell
 
-# Convert sf point to terra SpatVector
+# Convert sf POINT to terra SpatVector
 sighting_v <- terra::vect(sighting)
 
 # Extract Vegetation class for each sighting record
@@ -351,50 +351,39 @@ sighting_gridcell <- terra::extract(
 sighting_gridcell_df <- terra::as.data.frame(sighting_gridcell, geom=NULL)
 
 length(unique(sighting_gridcell_df$cell)) # 55784 unique grid cell
-# --------------------------------------------------------------------------------------
-
-
+# ------------------------------------------------------------------------------
 # Solution 2: (sighting + evc) + grid_template = sighting_gridcell 
-
-# Create a SpatRaster grid template from scratch 
+# 1. Create SpatRaster grid template with the same extent as the sighting data
 grid_template <- terra::rast(
-  x = sighting,
-  crs = "epsg:7844", # GDA2020
-  resolution = 1 / 3000
+  x = sighting,           # Use the extent of the 'sighting' sf object
+  crs = "epsg:7844",      # CRS = GDA2020 
+  resolution = 1 / 3000   # Set the desired resolution (~1000m^2 per grid cell)
 )
-# Assign gridcell_id 
-# terra::values(grid_template) <- 1:ncell(grid_template) # 68,401,743 rows
 
-# Convert sf point to terra SpatVector
-sighting_v <- terra::vect(sighting)
+# 2. Assign unique IDs to the grid cells (cell numbers)
+# The cell numbers will be used as grid cell IDs
+grid_template <- terra::setValues(grid_template, 1:ncell(grid_template))
 
-# Rasterise sighting sf POINTS to each grid cells (SpatRaster)
-gridcell <- terra::rasterize(
-  sighting_v, # SpatVector object
-  grid_template, # SpatRaster grid cell template
-  field = c("sighting_id"), # EVC class
-  )
+# 3. Convert sf points (sighting) to coordinates
+# Convert sf POINT to terra SpatVector                                               
+sighting_v <- terra::vect(sighting[c("sighting_id","sighting_geometry")])
 
-# Extract Vegetation class for each sighting record
+# 4. Extract grid cell IDs for each sighting based on its coordinates
+# Extract the cell number for each sighting point
 sighting_gridcell <- terra::extract(
-  x = gridcell,
-  y = sighting_v,
-  cells = TRUE
-  # ID = TRUE # the first column returned has the IDs (record numbers) of y
-) |> 
-  dplyr::mutate(sighting_id = as.character(sighting_id))
+  grid_template, 
+  sighting_v) |> 
+  dplyr::rename(
+    "sighting_rowname" = "ID", 
+    "gridcell_id" = "lyr.1") |> 
+  dplyr::mutate(
+    sighting_rowname = as.character(sighting_rowname),
+    gridcell_id = as.character(gridcell_id))
 
-sighting_2 <- sighting |> 
-  inner_join(sighting_gridcell, by = c("sighting_id"))
+# 5. Combine the extracted cell IDs with the original sighting data
+sighting <- base::cbind(sighting, sighting_gridcell["gridcell_id"])
+# ------------------------------------------------------------------------------
 
-# Preview gridcell SpatRaster value
-# as.matrix(gridcell) |> as.data.frame() |> nrow()
-# 
-# terra::as.data.frame(gridcell) |> 
-#   # tibble::rownames_to_column() |> 
-#   group_by(rowname) |> 
-#   summarise(n=n()) |> 
-#   arrange(desc(n))
 ```
 
 ```{r}
@@ -412,6 +401,8 @@ sighting |>
   filter(is.na(evc_group)) |> 
   group_by(species_group) |> 
   summarise(n = n())
+
+# sighting may occurred on mountain areas? in the water? 
 ```
 
 
