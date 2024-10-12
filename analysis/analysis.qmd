@@ -79,3 +79,32 @@ sighting <- sighting |>
 head(sighting, 10)
 ```
 
+```{r}
+sighting |> 
+  sf::st_drop_geometry() |> 
+  group_by(sample) |> 
+  summarise(
+    "s.size" = n(), # number of individuals
+    "observed" = length(unique(species)) # number of species
+    ) 
+```
+
+```{r}
+# TRANSFORM INTO iNEXT SUPPORTED INPUT FORMAT
+df <- sighting |> 
+  sf::st_drop_geometry() |> 
+  group_by(sample, species) |> 
+  summarise(n = n()) |> 
+  tidyr::pivot_wider(names_from = sample, values_from = n, values_fill = NULL)
+df |> head(10)
+
+# Convert df into list of numeric vectors 
+df_list <- lapply(as.list(df[,-1]), na.omit) 
+ 
+# Preview list of vectors 
+lapply(df_list, function(x) head(x, 10))
+```
+```{r}
+
+```
+
