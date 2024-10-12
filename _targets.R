@@ -146,12 +146,24 @@ list(
              ),
   
   # [2.3] Data Wrangling Raw ALA Sighting 
-  tar_target(ala_sighting,
-             ala_sighting_raw |> 
-             # Convert into sf object
-             sf::st_as_sf(coords = c("decimalLongitude", "decimalLatitude"),
-                          crs = st_crs(vic_map))
-            ),
+  tar_target(
+    ala_sighting,
+    ala_sighting_raw |>
+      # Add column
+      dplyr::mutate(
+        species_group = case_when(
+          class == "Amphibia" ~ "Amphibians",
+          speciesGroup == "Fungi" ~ "Fungi",
+          .default = stringr::str_split_i(speciesGroup, " | ", -1)),
+        eventDate = lubridate::as_date(eventDate, tz = "UTC")
+      ) |>
+      # Convert into sf object
+      sf::st_as_sf(
+        coords = c("decimalLongitude", "decimalLatitude"),
+        crs = st_crs(vic_map)
+      )
+    
+  ), 
   
     # Grid bounding box of ala_sighting
   tar_target(bbox_filter_ala,
@@ -172,7 +184,8 @@ list(
     fire_history |>
       dplyr::filter(FIRE_SEASON >= 1970) |>
       dplyr::select(FIRE_SEASON, FIRE_NO, FIRE_START_DATE, FIRE_SVRTY, geometry) |> 
-      sf::st_intersection(poly_filter_ala)
+      sf::st_intersection(poly_filter_ala) |> 
+      janitor::clean_names()
   ),
   
   # [2.6]
@@ -180,7 +193,49 @@ list(
     # Select species_groups
     selected_species_group,
     c("Amphibians", "Arthropods", "Birds", "Crustaceans", "Fishes", "Fungi", "Insects", "Mammals", "Molluscs", "Plants", "Reptiles")
+  ),
+  tar_target(
+    # Define important Dates
+    fire1920_start_date,
+    lubridate::ymd("2019-11-21")
   )
+  ,
+  tar_target(
+    # Merge 3 data sources into 1 data object
+    sighting,
+    ala_sighting |>
+      # Subset necessary columns
+      dplyr::select(sighting_id = recordID, species_group, sighting_date = eventDate, sighting_geometry = geometry) |>
+      # Subset records
+      dplyr::filter(species_group %in% selected_species_group) |>
+      # Join sighting POINTS with fire POLYGONS
+      sf::st_join(fire_history_eas,
+                  join = st_within, left = TRUE) |>
+      # Get the latest fire record of each sighting
+      dplyr::filter(is.na(fire_start_date) | fire_start_date <= sighting_date) |>
+      dplyr::group_by(sighting_id) |>
+      dplyr::filter(is.na(fire_start_date) | fire_start_date == max(fire_start_date)) |>
+      dplyr::ungroup() |>
+      # Join sighting POINTS with with EVC POLYGONS
+      st_join(evc_cropped |> select(evc_group = XGROUPNAME), # |> janitor::clean_names()
+              join = st_within, left = TRUE) |>
+      # Exclude records without evc_group
+      dplyr::filter(!is.na(evc_group)) |>
+      # Add columns ---------
+    dplyr::mutate(
+      before_after_fire = case_when(
+        sighting_date < fire1920_start_date ~ "before",
+        sighting_date >= fire1920_start_date ~ "after" ),
+      burnt = if_else(!is.na(fire_start_date) & ymd(fire_start_date) < sighting_date,
+                      "burnt",
+                      "unburnt"),
+      sample = paste(burnt, before_after_fire, sep = "_"),
+      time_since_fire_days = if_else(burnt == "burnt",
+                                     as.numeric(lubridate::ymd(sighting_date) - lubridate::ymd(fire_start_date)),
+                                     NA)
+    )
+  )
+
   
   # tar_target(
   #   

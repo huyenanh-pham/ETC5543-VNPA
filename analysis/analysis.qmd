@@ -1,0 +1,81 @@
+---
+title: "Biodiversity analysis"
+subtitle: "East Gippsland (extended area)" 
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 2
+editor: source
+execute:
+  echo: false
+  message: false
+  warning: false
+---
+
+```{r library}
+# Library
+lib <- c("targets","tarchetypes",
+         "tidyverse","sf","galah","terra",
+         "tidyterra","tmap","leaflet","plotly")
+invisible(lapply(lib, library, character.only = TRUE))
+rm(lib)
+
+# Targets config
+tar_config_set(store = here::here("_targets"))
+
+# Create a custom theme
+theme_minimal_hpha0042 <- theme_minimal() +
+  theme(
+    # Plot title & subtitle
+    plot.title = element_text(face = 'bold'),
+    plot.title.position = "plot",
+    plot.subtitle = element_text(color = "grey20", size = 12)
+  )
+theme_set(theme_minimal_hpha0042)
+```
+
+```{r}
+tar_load(sighting) # ref to _targets.R
+
+# 1. Create SpatRaster grid template with the same extent as the sighting data
+grid_template <- terra::rast(
+  x = sighting,           # Use the extent of the 'sighting' sf object
+  crs = "epsg:7844",      # CRS = GDA2020 
+  resolution = 1 / 3000   # Set the desired resolution (~1000m^2 per grid cell)
+)
+
+# 2. Assign unique IDs to the grid cells (cell numbers)
+# The cell numbers will be used as grid cell IDs
+grid_template <- terra::setValues(grid_template, 1:ncell(grid_template))
+
+# 3. Convert sf points (sighting) to coordinates
+# Convert sf POINT to terra SpatVector                                               
+sighting_v <- terra::vect(sighting[c("sighting_id","sighting_geometry")])
+
+# 4. Extract grid cell IDs for each sighting based on its coordinates
+# Extract the cell number for each sighting point
+sighting_gridcell <- terra::extract(
+  grid_template, 
+  sighting_v) |> 
+  dplyr::rename(
+    "sighting_rowname" = "ID", 
+    "gridcell_id" = "lyr.1") |> 
+  dplyr::mutate(
+    sighting_rowname = as.character(sighting_rowname),
+    gridcell_id = as.character(gridcell_id))
+
+# 5. Combine the extracted cell IDs with the original sighting data
+sighting <- base::cbind(sighting, sighting_gridcell["gridcell_id"])
+
+# 6. Wrangling
+sighting <- sighting |> 
+  dplyr::filter(evc_group != "Plains Grasslands and Chenopod Shrublands") # n_burnt_after = 0
+
+```
+
+
+```{r}
+head(sighting, 10)
+```
+

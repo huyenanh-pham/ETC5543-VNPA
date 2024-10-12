@@ -2,9 +2,9 @@ name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iterat
 ala_bunyip|stem|470bfc6e660d811c|b5f7369ffa5efc65|5a92dfd1689b7a56|1827462705||t19971.21177409s|5b9531293ad5a986|8554078|rds|local|vector|||40.61||
 ala_laf|stem|9c029e2acec9e39e|b5f7369ffa5efc65|5a92dfd1689b7a56|-1558327660||t19971.2126837468s|210aae1b17f40f53|8554081|rds|local|vector|||39.5||
 ala_sbb_raw|stem|b3266548a7025c1f|08fa57549f05f3bb|b0bd8fee30ce4299|2050884338||t19960.2466743714s|7b2c745f4d11ed04|293067|rds|local|vector|||10.83|package tidyr was built under R version 4.3.3. package stringr was built under R version 4.3.3|
-ala_sighting|stem|41f42a0691038854|5f7cd6e9d1375280|70e88df6cf1b2e62|-1519082777||t19983.0476410627s|d1f30dd436335032|38915726|rds|local|vector|||0.23||
+ala_sighting|stem|885aebddf917bc86|85dbb2fd8c9313b6|70e88df6cf1b2e62|-1519082777||t20008.0783582609s|379d47cbe8fb3252|38398529|rds|local|vector|||1.22||
 ala_sighting_raw|stem|2e3b599e44fd8586|7c8519d273b8131b|65da88b21a518b94|402235760||t19983.0475572825s|f38b6e461f1f754d|36901423|rds|local|vector|||140.88||
-bbox_filter_ala|stem|e7b6a3214ea01c3b|20a6c927fad9bfa8|a0356175d74f63fe|-808831111||t19991.2059674842s|08ce50bfd41669d5|644|rds|local|vector|||0||
+bbox_filter_ala|stem|e7b6a3214ea01c3b|20a6c927fad9bfa8|fa8c92a3de899544|-808831111||t20008.0783587125s|08ce50bfd41669d5|644|rds|local|vector|||0||
 crs_GDA2020|stem|1c347150748b4b19|969545d2db7cf525|5aa1e47d72a545aa|-1998379723||t19960.2021115396s|48e6b4848e5efe02|550|rds|local|vector|||0||
 evc|stem|a302795c8c1e4801|cfb72fb970f0bd42|3ea1cd67f44ceb58|882051193||t19961.0522577295s|94edca7dbf96cfcc|835768334|rds|local|vector|||63.1||
 evc_cropped|stem|029941a3d33388e0|d905ed5379625139|5f1d99e2053d9b9c|817961138||t19991.1983095616s|a854ebdf10eb7b9b|190105970|rds|local|vector|||281.97|attribute variables are assumed to be spatially constant throughout all geometries|
@@ -14,8 +14,9 @@ evc_laf|stem|a537cd60df35be5e|df677ae1d0dbb8e9|b0bdbe7cdfc79610|273778468||t1997
 filepath|stem|7686524da7f26fa5|4a09adef7a21b656|2c530c1562a7fbd1|520339606|C:/Users/huyen/OneDrive/home/1_School/B6022/1_ETC5543_Project/ETC5543-VNPA/raw-data/FIRE_HISTORY_GDA2020/FIRE_HISTORY.shp*C:/Users/huyen/OneDrive/home/1_School/B6022/1_ETC5543_Project/ETC5543-VNPA/raw-data/PARKRES_GDA2020/PARKRES.shp*C:/Users/huyen/OneDrive/home/1_School/B6022/1_ETC5543_Project/ETC5543-VNPA/raw-data/EVC_GDA2020/NV2005_EVCBCS.shp*C:/Users/huyen/OneDrive/home/1_School/B6022/1_ETC5543_Project/ETC5543-VNPA/raw-data/Order_7JR9NQ/ll_gda2020/esrishape/whole_of_dataset/victoria/FLORAFAUNA1/VBA_FAUNA25.shp*C:/Users/huyen/OneDrive/home/1_School/B6022/1_ETC5543_Project/ETC5543-VNPA/raw-data/Order_7JR9NQ/ll_gda2020/esrishape/whole_of_dataset/victoria/FLORAFAUNA1/VBA_FAUNA25_1.shp|t19954.6679861111s|f23f9f99a219648c|2344835232|file|local|vector|||1.28||
 fire_history|stem|59d005fb149ca4db|dff8effbc7f74278|3ea1cd67f44ceb58|-59018930||t19992.1951304265s|c0467715ae5b3766|688210053|rds|local|vector|||36.01|There was 1 warning in stopifnot.ℹ In argument FIRE_START_DATE  lubridateymdFIRE_START_DATE.Caused by warning  4 failed to parse.|
 fire_history_1920|stem|1dbcfaa467718a8c|3beebd1044096463|8be5c04048c78f53|1798080700||t19992.1951747325s|ba7a29e260fdcb87|33373685|rds|local|vector|||0.11||
-fire_history_eas|stem|77cea3aea03d74a1|dd11183e68a15fbf|230efef46c6976db|-630285763||t19992.2054032266s|9d1b71253f64cd13|525167900|rds|local|vector|||451.64|attribute variables are assumed to be spatially constant throughout all geometries|
+fire_history_eas|stem|2bfd449ad50964c8|13cb00b81ea80bca|230efef46c6976db|-630285763||t20008.0460991308s|84cfeaff88993d06|525167933|rds|local|vector|||317.28|attribute variables are assumed to be spatially constant throughout all geometries|
 fire_history_laf|stem|253d7675f413a0d1|6503d30ead47b1f0|1e6f3590a9fab6ac|-1175393122||t19992.1972726442s|1c2b6a2e89441f10|79051385|rds|local|vector|||173.62|attribute variables are assumed to be spatially constant throughout all geometries|
+fire1920_start_date|stem|180ff66cdee7b025|03a4df98448cca82|2c530c1562a7fbd1|1217191794||t20008.1269002416s|4179e472436f3418|81|rds|local|vector|||3.32||
 get_ala|function|6c5605301e3e132d|||||||||||||||
 get_ala_data|function|8b126af9de0b999b|||||||||||||||
 get_ala_data_speciesGroup|function|2eda0f965eaf8143|||||||||||||||
@@ -25,6 +26,7 @@ poly_filter_ala|stem|314f414fca1cd8a4|9fdb9f111e40514b|c90728b661c3416b|-1486900
 poly_fire_1920|stem|8b6d63de72dba286|507c1ffc311bb350|7a28706474618410|1737558613||t19992.1993277412s|d6a45fcd225cea51|2091726|rds|local|vector|||177.28||
 poly_laf|stem|3c3fce5f7168edee|55a0d96cdc4caec6|5aa1e47d72a545aa|1994945883||t19971.2117750236s|a4677bedb1fb1cdf|724|rds|local|vector|||0||
 selected_species_group|stem|c7f064e56225f485|d501dd690b9c598a|2c530c1562a7fbd1|-1709307885||t19996.2697862275s|8c397a474f1bcd79|148|rds|local|vector|||3.06||
+sighting|stem|3612f056e6462b10|c6e0e9a1109e9f42|8132ccb997ef9115|40862354||t20008.1304289562s|8f9bf613138cbfb7|17413859|rds|local|vector|||286.05||
 vba_fauna|stem|be51cd75cd61d5dd|b17cff74b2bf589d|ac3f1b8fc7c7706a|-567859376||t19952.1014057428s|2d5f0969c2cea589|307468475|rds|local|vector|||7.4||
 vba_fauna_filepaths|stem|5dbde7c7dae7ff37|a545e67091f33dac|2c530c1562a7fbd1|-325423906||t19947.2959089805s|87fddfa2a4a78bf2|213|rds|local|vector|||2.14|package tidyr was built under R version 4.3.3. package stringr was built under R version 4.3.3|
 vba_fauna_listOfShp|stem|f48c762d4c55def7|3e11f9699d354c0a|3e4eb307453a06c5|488361920||t19952.099662199s|c2571c22d6964136|307544191|rds|local|vector|||176.36||
