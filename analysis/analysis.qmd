@@ -91,20 +91,40 @@ sighting |>
 
 ```{r}
 # TRANSFORM INTO iNEXT SUPPORTED INPUT FORMAT
-df <- sighting |> 
+sp1 <- sighting |> 
   sf::st_drop_geometry() |> 
   group_by(sample, species) |> 
   summarise(n = n()) |> 
   tidyr::pivot_wider(names_from = sample, values_from = n, values_fill = NULL)
-df |> head(10)
+sp1 |> head(10)
 
 # Convert df into list of numeric vectors 
-df_list <- lapply(as.list(df[,-1]), na.omit) 
- 
-# Preview list of vectors 
-lapply(df_list, function(x) head(x, 10))
-```
-```{r}
+sp1_list <- lapply(as.list(sp1[,-1]), na.omit) 
 
+# sp1_list[c("burnt_after","burnt_before","unburnt_after","unburnt_before")]
+
+# Preview list of vectors 
+lapply(sp1_list, function(x) head(x, 10))
+```
+
+```{r}
+# ESTIMATE BIODIVERSITY
+sp1_output <- estimateD(sp1_list, datatype="abundance", base="size", level=NULL, conf=0.95)
+
+# Results
+sp1_output
+
+```
+
+```{r}
+# FOREST PLOT 
+sp1_output |> 
+  ggplot(aes(x=Assemblage, y=qD, color = Assemblage)) + 
+  geom_point() + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
+                         #, linewidth = ebsize, width = ebw
+  ) +
+  facet_wrap(~Order.q) + 
+  theme(legend.position = "bottom")
 ```
 
