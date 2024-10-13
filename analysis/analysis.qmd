@@ -35,6 +35,19 @@ theme_minimal_hpha0042 <- theme_minimal() +
 theme_set(theme_minimal_hpha0042)
 ```
 
+### Data Wragnling   
+
+```{r}
+# PREPARE DATA FOR VISUALISATION
+fire1920_timeframe <- data.frame(
+  start_date = as.POSIXct(c("2019-11-22", "2019-11-22")), 
+  end_date = as.POSIXct(c("2020-03-01", "2020-03-01")))
+
+# Define color palette
+report_pal <- setNames(RColorBrewer::brewer.pal(n=8,name="Set2")[c(1,2)],
+              c("parkres","fire"))
+```
+
 ```{r}
 tar_load(sighting) # ref to _targets.R
 
@@ -78,7 +91,7 @@ sighting <- sighting |>
 ```{r}
 head(sighting, 10)
 ```
-
+### Data Summary     
 ```{r}
 sighting |> 
   sf::st_drop_geometry() |> 
@@ -89,6 +102,60 @@ sighting |>
     ) 
 ```
 
+### Standardising sampling periods  
+
+Problem: Increased sighting effort after the fires. 
+
+```{r}
+# Line plot
+ggplot(
+  data = sighting |> 
+  sf::st_drop_geometry() |> 
+  dplyr::mutate(sighting_ym = format(sighting_date, "%Y-%m")) |>
+  group_by(sighting_ym) |>
+  summarise(sighting_count = n())
+) +
+  geom_line(
+    aes(x = sighting_ym, y = sighting_count, group = 1),
+    color = "grey30",
+    linewidth = 1
+  ) +
+  # Line
+  geom_point(aes(x = sighting_ym, y = sighting_count),
+             size = 1.5) +
+  theme(aspect.ratio = 1/5) + # Plot aspect ratio y/x
+  # Highlight the fire period
+  geom_rect(
+    data = fire1920_timeframe |> dplyr::mutate(start_date = format(start_date, "%Y-%m"), end_date = format(end_date, "%Y-%m")),
+    aes(xmin = start_date, xmax = end_date, ymin = -Inf, ymax = Inf),
+    fill = report_pal[["fire"]],
+    alpha = 0.2
+  ) +
+  # Annoation
+  annotate(
+    "text", x = format(fire1920_timeframe$start_date[1] %m-% months(2), "%Y-%m"), y = 22000,
+    label = "Wildfires 2019/20",
+    fontface = "bold",
+    color = report_pal[["fire"]]) +
+  labs(title = "Monthly number of sightings in the East Gippsland Shire",
+       subtitle = "2017 - 2021",
+       x = NULL, y = NULL)
+```
+
+
+Number of unburnt and burn grid cell per vegetation class  
+
+```{r}
+sighting |> 
+  sf::st_drop_geometry() |> 
+  group_by(evc_group, burnt) |> 
+  summarise(gridcell_count = n()) |> 
+  pivot_wider(names_from = burnt, values_from = gridcell_count) |> 
+  dplyr::mutate(gridcell_diff = burnt - unburnt)
+```
+
+
+### Transformation   
 ```{r}
 # TRANSFORM INTO iNEXT SUPPORTED INPUT FORMAT
 sp1 <- sighting |> 
@@ -107,6 +174,7 @@ sp1_list <- lapply(as.list(sp1[,-1]), na.omit)
 lapply(sp1_list, function(x) head(x, 10))
 ```
 
+### Statistical Estimation   
 ```{r}
 # ESTIMATE BIODIVERSITY
 sp1_output <- estimateD(sp1_list, datatype="abundance", base="size", level=NULL, conf=0.95)
