@@ -141,6 +141,70 @@ ggplot(
        subtitle = "2017 - 2021",
        x = NULL, y = NULL)
 ```
+Solution: Create temporal sampling periods with the same duration. 
+For each grid cell, extract the ALA observations for the before-after fire and burnt-unburnt treatments.  
+
+In burnt areas:  
+  
+Before-After treatment   
+- After: One after-fire sampling period: Fire start date time-since-fire. Maximum time-since-fire is 548 days (18 months).   
+- Before: Control the time-since-fire   
+
+Step 1: Fixed post-fire period  
+We established a fixed post-fire period of 548 days (18 months) for all areas impacted by the fire. This period began on the fire start date of each grid cell and extended for 18 months afterward. Reasoning behind the selection of 548 days (ref to Appendix 2). 
+
+Step 2: For pre-fire samples, extract ALA sighting observations only from grid cells with post-fire observations (cells with sightings after the fire start date).
+
+Step 3: Determining the pre-fire period  
+To create comparable pre-fire periods, we first defined the pre-fire period starting date by subtracting a common number of days (1020 days) from the fire start date for each grid cell.   
+
+Step 4: Creating multiple pre-fire periods  
+Then, we generated nine pre-fire periods: the next pre-fire period starting were determined by offsetting the preceding one by 46 days (1.5 months). Each pre-fire period extended for 548 days (18 months) to match length of the post-fire period. The latest pre-fire period began on 22 May 2018, ensuring no overlap with the post-fire periods.  
+
+Purpose of Controlling the time-since-fire: This careful construction of pre-fire sampling periods ensures that the pre-fire data collection occurred over timeframes mirroring those of the post-fire period. Hence, this minimises the potential influence natural fluctuation in biodiversity on the results. This control was crucial as biodiversity naturally varies over time due to factors, such as (1) cyclical patterns of abundance of many species, and (2) the long-term trends of environmental changes or species interactions. 
+
+```{r}
+#| eval: false 
+# generate pre-fire periods starting date
+seq(from = as.Date("2017-07-04"), by = "46 days", length.out = 9)
+
+format(as.Date(fire1920_timeframe$start_date[1]) - 548, "%d %b %Y")  # "2018-05-22"
+as.Date("2019-11-22") - 548
+as.Date("2018-05-22") + 548
+as.Date("2019-11-22") - as.Date("2018-02-19")
+```
+```{r}
+
+# burnt_after_gridcell: grid cells with post-fire observations 
+burnt_after_gridcell <- sighting |> 
+  sf::st_drop_geometry() |> 
+  # # Step 1 
+  dplyr::filter(time_since_fire_days <= 548) |> # 50,439 rows
+  select(gridcell_id) |> 
+  unique() |> # 11,465 unique gridcell_id 
+  pull()
+  
+sighting |> 
+  sf::st_drop_geometry() |> 
+  dplyr::filter(gridcell_id %in% burnt_after_gridcell) |> 
+  # Step 2: Extract ALA sighting observations only from grid cells with post-fire observations 
+  dplyr::filter(before_after_fire == "before") |>
+  nrow()
+
+
+```
+
+
+```{r}
+sighting |> 
+  sf::st_drop_geometry() |>  
+  dplyr::filter(sample == "burnt_after") |>
+  select(gridcell_id,
+         sighting_date,
+         fire_start_date,
+         time_since_fire_days) |> 
+  dplyr::filter(time_since_fire_days <= 548) 
+```
 
 
 Number of unburnt and burn grid cell per vegetation class  
@@ -196,3 +260,12 @@ sp1_output |>
   theme(legend.position = "bottom")
 ```
 
+# Appendix  
+## Appendix 2  
+
+<!--TODO-->
+Reasoning behind choosing 548 days (18 months) as the post-fire period
+(1) Ecological significance. 
+(2) Data availability.
+(3) Comparison to prior studies. 
+(4) Practical considerations.
