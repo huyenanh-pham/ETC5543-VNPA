@@ -51,6 +51,7 @@ report_pal <- setNames(RColorBrewer::brewer.pal(n=8,name="Set2")[c(1,2)],
 ```{r}
 # PREPARE DATA FOR STATISTICAL ESTIMATION
 tar_load(sighting) # ref to _targets.R
+tar_load(evc_cropped) # ref to _targets.R
 
 # Solution 1: sighting + (evc + grid_template) 
 #           = sighting + evc_gridcell = sighting_evc_gridcell ------------------
@@ -118,14 +119,69 @@ sighting_evc_gridcell <- dplyr::left_join(
 sighting <- base::cbind(
   sighting, 
   sighting_evc_gridcell[c("gridcell_id","evc_group")]
-  )
+  ) |> 
+  # Exclude records without evc_group
+  dplyr::filter(!is.na(evc_group))
 # ------------------------------------------------------------------------------
+
+# AMENDED Select species group & vegetation group ------------------------------
+# [*] Of the 14 taxon groupings and 20 habitats, only those with ≥90 observations in burnt regions in the 18 months after fires were included for further analysis. -> 7 species groups and 12 EVC groups
+
+# Original  
+# ala_sighting |> sf::st_drop_geometry() |> select(species_group) |> unique() # 14
+# sighting |> sf::st_drop_geometry() |> select(evc_group) |> unique() # 20
+
+# Selected
+# selected_species_group <- sighting |> 
+#   sf::st_drop_geometry() |>
+#   dplyr::filter(
+#     burnt == "burnt",
+#     before_after_fire == "after", time_since_fire_days <= 548) |>
+#   group_by(species_group, evc_group) |>
+#   summarise(n = n()) |> 
+#   filter(n >= 90) |> 
+#   ungroup() |> 
+#   select(species_group) |> 
+#   unique() |> 
+#   pull()
+
+# selected_evc_group <- sighting |> 
+#   sf::st_drop_geometry() |>
+#   dplyr::filter(
+#     burnt == "burnt",
+#     before_after_fire == "after", time_since_fire_days <= 548) |>
+#   group_by(species_group, evc_group) |>
+#   summarise(n = n()) |> 
+#   filter(n >= 90) |> 
+#   ungroup() |> 
+#   select(evc_group) |> 
+#   unique() |> 
+#   pull()
+
+# bring forward to _targets.R 
+# cat("\"",paste(sort(selected_evc_group), collapse = "\", \""),"\"",sep = "")
+selected_species_group <- c("Amphibians", "Birds", "Insects", "Mammals", "Molluscs", "Plants", "Reptiles")
+
+selected_evc_group <- c("Coastal Scrubs Grasslands and Woodlands", "Dry Forests", "Heathlands", "Lowland Forests", "Montane Grasslands, Shrublands or Woodlands", "Rainforests", "Riparian Scrubs or Swampy Scrubs and Woodlands", "Riverine Grassy Woodlands or Forests", "Rocky Outcrop or Escarpment Scrubs", "Sub-alpine Grasslands, Shrublands or Woodlands", "Wet or Damp Forests", "Wetlands")
+#-------------------------------------------------------------------------------
+
+# 8. Subset sighting to only selected_evc_group
+sighting <- sighting |> 
+  dplyr::filter(evc_group %in% selected_evc_group)
+
+# [!] CHECKING: a gridcell_id only has 1 evc_group value -> 0 = PASS
+# sighting |> sf::st_drop_geometry() |> 
+#   group_by(gridcell_id) |>
+#   summarise(n = n_distinct(evc_group)) |> 
+#   filter(n > 1) |> 
+#   nrow()
 ```
 
 
 ```{r}
 head(sighting, 10)
 ```
+
 ### Data Summary     
 ```{r}
 sighting |> 
@@ -203,9 +259,10 @@ Then, we generated nine pre-fire periods: the next pre-fire period starting were
 
 Purpose of Controlling the time-since-fire: This careful construction of pre-fire sampling periods ensures that the pre-fire data collection occurred over timeframes mirroring those of the post-fire period. Hence, this minimises the potential influence natural fluctuation in biodiversity on the results. This control was crucial as biodiversity naturally varies over time due to factors, such as (1) cyclical patterns of abundance of many species, and (2) the long-term trends of environmental changes or species interactions.   
 
-<!-- [S4] -->
+<!-- [S5] -->
 Step 5: Select unburnt grid cells  <!-- to-rewrite -->
 
+<!-- [**] constraint -->
 - The same number of grid cells in the burnt region assigned to each vegetation class (from which habitat was derived; see Section 2.3) was then randomly selected from areas which were not burnt by the 2019–2020 fires.  
 - When burnt or unburnt regions had unequal grid cell numbers per vegetation class, grid cells were randomly removed from the treatment with the higher value, to ensure equal spatial and vegetation class coverage between treatments. <!-- Fire severity, fire date, and habitat values were then extracted for each research- grade iNaturalist observation with ≤1000 m accuracy (such that observations would only be a maximum of one grid cell offset), resulting in a dataset of species observations at 1000 m resolution, with associated fire severity, fire date, and habitat. -->
 
@@ -214,7 +271,7 @@ Step 5: Select unburnt grid cells  <!-- to-rewrite -->
 + For the limiting category, select all available cells.
 + For the non-limiting category, randomly select the same number of cells as in the limiting category.  
 This procedure is applied for all vegetation groups.   
-
+- [S5.3] Randomly allocate the fire_start_date from burnt_after to unburnt_after grid cells with the same vegetation class.
 
 ```{r}
 #| eval: false 
@@ -277,27 +334,44 @@ sample_size_by_evc
 # [S5.2.1] Perform stratified sampling for burnt_after
 burnt_after_gridcell_stratified_sampled <- 
   # Data source
-  burnt_after_gridcell |> dplyr::filter(pfp_id==1) |> dplyr::select(evc_group, gridcell_id) |> 
+  burnt_after_gridcell |> dplyr::filter(pfp_id==1) |> dplyr::select(evc_group, gridcell_id, fire_start_date) |> 
   # Left join with sample_size_by_evc
-  dplyr::left_join(sample_size_by_evc |> select(c(evc_group, sample_size, which_treatment)),
+  dplyr::left_join(sample_size_by_evc |> select(c(evc_group, sample_size)),
             by = "evc_group") |> 
   dplyr::group_by(evc_group) %>% 
   dplyr::group_modify(~ slice_sample(.x, n = .x$sample_size[1])) |> # Use `slice_sample` with `n` determined by `sample_size` in each evc_group
   dplyr::ungroup() |> 
-  dplyr::select(evc_group, gridcell_id) 
+  dplyr::select(evc_group, gridcell_id, fire_start_date) 
 
 # [S5.2.2] Perform stratified sampling for unburnt_after
+unburnt_after_gridcell_stratified_sampled <- 
   # Data source = # PART 3/4: sample_id = "unburnt_after" 
   sighting |> sf::st_drop_geometry() |> 
     dplyr::filter(burnt == "unburnt" & before_after_fire == "after") |> 
     dplyr::select(evc_group, gridcell_id) |> 
     unique() |> 
   # Left join with sample_size_by_evc
-  dplyr::left_join(sample_size_by_evc |> select(c(evc_group, sample_size, which_treatment)),
-            by = "evc_group")
+  dplyr::left_join(sample_size_by_evc |> select(c(evc_group, sample_size)),
+            by = "evc_group") |> 
+  dplyr::group_by(evc_group) %>% 
+  dplyr::group_modify(~ slice_sample(.x, n = .x$sample_size[1])) |> # Use `slice_sample` with `n` determined by `sample_size` in each evc_group
+  dplyr::ungroup() |> 
+  dplyr::select(evc_group, gridcell_id) 
 
-# Checking
-# burnt_after_gridcell_stratified_sampled |> group_by(evc_group) |> summarise(sample_size = n_distinct(gridcell_id))
+# [!] Checking: [**] constraint of Number of grid cells in the burnt region = in the unburnt region -> 0 = PASS
+# cbind(
+#   burnt_after_gridcell_stratified_sampled |>
+#     group_by(evc_group) |>
+#     summarise(burnt_after_sample_size = n_distinct(gridcell_id)),
+#   unburnt_after_gridcell_stratified_sampled |>
+#     group_by(evc_group) |>
+#     summarise(unburnt_after_sample_size = n_distinct(gridcell_id)) |>
+#     dplyr::select(unburnt_after_sample_size)
+# ) |>
+#   mutate(checking = burnt_after_sample_size - unburnt_after_sample_size)
+
+# [S5.2.3] Randomly allocate the fire_start_date from burnt_after to unburnt_after grid cells with the same vegetation class
+
 
 # APPENDING TOWARD THE FINAL DATASET -------------------------------------------
 sighting_final <- 

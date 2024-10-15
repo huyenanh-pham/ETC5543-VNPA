@@ -190,15 +190,9 @@ list(
   
   # [2.6]
   tar_target(
-    # Select species_groups <backlink to eda_ala.qmd>
+    # Select species_groups <ref to analysis.qmd>
     selected_species_group,
     c("Amphibians", "Birds", "Insects", "Mammals", "Molluscs", "Plants", "Reptiles")
-  ),
-  
-  tar_target(
-    # Select vegetation groups <backlink to eda_ala.qmd>
-    selected_evc_group,
-    c("Coastal Scrubs Grasslands and Woodlands", "Dry Forests", "Heathlands", "Lowland Forests", "Montane Grasslands, Shrublands or Woodlands", "Rainforests", "Riparian Scrubs or Swampy Scrubs and Woodlands", "Riverine Grassy Woodlands or Forests", "Rocky Outcrop or Escarpment Scrubs", "Sub-alpine Grasslands, Shrublands or Woodlands", "Wet or Damp Forests", "Wetlands")
   ),
   
   tar_target(
