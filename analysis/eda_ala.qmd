@@ -79,68 +79,7 @@ tar_load(fire1920_start_date)
 # Crop fire extend 
 poly <- sf::st_crop(st_make_valid(poly_fire_1920), st_make_valid(poly_filter_ala))
 
-# Select species group ---------------------------------------------------------
-# only those with ≥100 observations 
-# [1] in burnt regions 
-# [2] in the 18 months after fires were included for further analysis
 
-ala_sighting_burnt <- 
-  # [1] sighting in burnt regions
-  sf::st_filter( 
-    ala_sighting |> select("species_group",sighting_date = "eventDate","geometry"), 
-    poly) 
-
-selected_species_group <- ala_sighting_burnt |> 
-  sf::st_drop_geometry() |> 
-  # [2] in the 18 months after fires 
-  filter(
-    between(sighting_date, fire1920_start_date, fire1920_start_date %m+% months(18))
-  ) |>
-  group_by(species_group) |>
-  summarise(n = n()) |>
-  filter(n >= 100) |>
-  pull(species_group)
-
-selected_species_group
-
-
-# AMENDED Select species group & vegetation group ------------------------------
-
-# [*] Of the 14 taxon groupings and 19 habitats, only those with ≥90 observations in burnt regions in the 18 months after fires were included for further analysis. -> 7 species groups and 12 EVC groups
-# sighting |> sf::st_drop_geometry() |> select(evc_group) |> unique() # 19
-
-selected_species_group <- sighting |> 
-  sf::st_drop_geometry() |>
-  dplyr::filter(
-    burnt == "burnt",
-    before_after_fire == "after", time_since_fire_days <= 548) |>
-  group_by(species_group, evc_group) |>
-  summarise(n = n()) |> 
-  filter(n >= 90) |> 
-  ungroup() |> 
-  select(species_group) |> 
-  unique() |> 
-  pull()
-
-selected_evc_group <- sighting |> 
-  sf::st_drop_geometry() |>
-  dplyr::filter(
-    burnt == "burnt",
-    before_after_fire == "after", time_since_fire_days <= 548) |>
-  group_by(species_group, evc_group) |>
-  summarise(n = n()) |> 
-  filter(n >= 90) |> 
-  ungroup() |> 
-  select(evc_group) |> 
-  unique() |> 
-  pull()
-
-# bring forward to _targets.R
-selected_species_group <- c("Amphibians", "Birds", "Insects", "Mammals", "Molluscs", "Plants", "Reptiles")
-
-selected_evc_group <- c("Coastal Scrubs Grasslands and Woodlands", "Dry Forests", "Heathlands", "Lowland Forests", "Montane Grasslands, Shrublands or Woodlands", "Rainforests", "Riparian Scrubs or Swampy Scrubs and Woodlands", "Riverine Grassy Woodlands or Forests", "Rocky Outcrop or Escarpment Scrubs", "Sub-alpine Grasslands, Shrublands or Woodlands", "Wet or Damp Forests", "Wetlands")
-
-#-------------------------------------------------------------------------------
 ```
 
 Original data: 14 broad taxon groups `species_group`.  
