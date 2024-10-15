@@ -292,7 +292,7 @@ gridcell <- terra::rasterize(
   )
 
 # Preview gridcell SpatRaster value
-head(gridcell)
+gridcell |> filter(!is.na(XGROUPNAME)) |> head(100)
 
 # Checking Plot
 ggplot() +
@@ -332,7 +332,7 @@ tar_load(sighting) # ref to _targets.R
 # nrow(sighting |> filter(is.na(evc_group))) # 120,234 rows
 
 # --------------------------------------------------------------------------------------
-# Solution 1: sighting + (evc + grid_tempalte) = sighting + gridcell = sighting_gridcell
+# Solution 1: sighting + (evc + grid_template) = sighting + gridcell = sighting_gridcell
 
 # Convert sf POINT to terra SpatVector
 sighting_v <- terra::vect(sighting)

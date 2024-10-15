@@ -49,25 +49,54 @@ report_pal <- setNames(RColorBrewer::brewer.pal(n=8,name="Set2")[c(1,2)],
 ```
 
 ```{r}
+# PREPARE DATA FOR STATISTICAL ESTIMATION
 tar_load(sighting) # ref to _targets.R
 
-# 1. Create SpatRaster grid template with the same extent as the sighting data
+# Solution 1: sighting + (evc + grid_template) 
+#           = sighting + evc_gridcell = sighting_evc_gridcell ------------------
+  
+# 1. Create a SpatRaster grid template from scratch (extend of the evc_cropped)
 grid_template <- terra::rast(
-  x = sighting,           # Use the extent of the 'sighting' sf object
-  crs = "epsg:7844",      # CRS = GDA2020 
-  resolution = 1 / 3000   # Set the desired resolution (~1000m^2 per grid cell)
-)
-
+    x = evc_cropped,
+    crs = "epsg:7844", # GDA2020
+    resolution = 1 / 3000
+  )
+  
 # 2. Assign unique IDs to the grid cells (cell numbers)
 # The cell numbers will be used as grid cell IDs
 grid_template <- terra::setValues(grid_template, 1:ncell(grid_template))
 
-# 3. Convert sf points (sighting) to coordinates
-# Convert sf POINT to terra SpatVector                                               
+# 3. Convert sf EVC polygons to terra::SpatVector
+evc_cropped_v <- terra::vect(evc_cropped[c("XGROUPNAME", "geometry")])
+  
+# 4. Extract evc_group for each gridcell_id  
+#    by rasterizing EVC polygons XGROUPNAME to each grid cell
+evc_gridcell <- terra::rasterize(
+  evc_cropped_v, # SpatVector object
+  grid_template, # SpatRaster grid cell template
+  field = "XGROUPNAME", # EVC class
+)
+# Sys.time()
+
+# Convert into df | gridcell_id | evc_group | 
+evc_gridcell_df <- terra::as.data.frame(evc_gridcell, cells = TRUE) |> 
+  dplyr::rename(
+    gridcell_id = cell, 
+    evc_group = XGROUPNAME) |> 
+  dplyr::mutate(
+    gridcell_id = as.character(gridcell_id),
+    evc_group = as.character(evc_group))
+
+# Checking the df
+# nrow(evc_gridcell_df) == length(unique(evc_gridcell_df$gridcell_id)) # nrow = 35,275,162 unique cells (from 67553244 down to here, filtered out gridcell_id with NA evc_group)
+
+sort(unique(evc_gridcell_df$evc_group))
+
+# 5. Convert sf points (sighting) to coordinates
+# Convert sf POINT to terra SpatVector                                          
 sighting_v <- terra::vect(sighting[c("sighting_id","sighting_geometry")])
 
-# 4. Extract grid cell IDs for each sighting based on its coordinates
-# Extract the cell number for each sighting point
+# 6. Extract gridcell_id for each sighting_id based on its coordinates
 sighting_gridcell <- terra::extract(
   grid_template, 
   sighting_v) |> 
@@ -78,13 +107,19 @@ sighting_gridcell <- terra::extract(
     sighting_rowname = as.character(sighting_rowname),
     gridcell_id = as.character(gridcell_id))
 
-# 5. Combine the extracted cell IDs with the original sighting data
-sighting <- base::cbind(sighting, sighting_gridcell["gridcell_id"])
+# Get evc_group associated with gridcell_id for each sighting_id
+sighting_evc_gridcell <- dplyr::left_join(
+  sighting_gridcell,
+  evc_gridcell_df,
+  by = "gridcell_id"
+)
 
-# 6. Wrangling
-# sighting <- sighting |> 
-#   dplyr::filter(evc_group != "Plains Grasslands and Chenopod Shrublands") # n_burnt_after = 0
-
+# 7. Combine the extracted cell IDs with the original sighting data
+sighting <- base::cbind(
+  sighting, 
+  sighting_evc_gridcell[c("gridcell_id","evc_group")]
+  )
+# ------------------------------------------------------------------------------
 ```
 
 
@@ -174,6 +209,13 @@ Step 5: Select unburnt grid cells  <!-- to-rewrite -->
 - The same number of grid cells in the burnt region assigned to each vegetation class (from which habitat was derived; see Section 2.3) was then randomly selected from areas which were not burnt by the 2019–2020 fires.  
 - When burnt or unburnt regions had unequal grid cell numbers per vegetation class, grid cells were randomly removed from the treatment with the higher value, to ensure equal spatial and vegetation class coverage between treatments. <!-- Fire severity, fire date, and habitat values were then extracted for each research- grade iNaturalist observation with ≤1000 m accuracy (such that observations would only be a maximum of one grid cell offset), resulting in a dataset of species observations at 1000 m resolution, with associated fire severity, fire date, and habitat. -->
 
+- [S5.1] Determine limiting factor for each evc_group: For each vegetation group, identify whether the burnt or unburnt cells are fewer in number. This will be the limiting factor for that group.  
+- [S5.2] Set sample size then random sampling within strata: For each vegetation group, set the sample size equal to the number of cells in the limiting category (burnt or unburnt). This ensures equal representation. Then, randomly sample grid cells within each stratum: 
++ For the limiting category, select all available cells.
++ For the non-limiting category, randomly select the same number of cells as in the limiting category.  
+This procedure is applied for all vegetation groups.   
+
+
 ```{r}
 #| eval: false 
 # generate pre-fire periods starting date
@@ -186,6 +228,8 @@ as.Date("2019-11-22") - as.Date("2018-02-19")
 ```
 
 ```{r}
+# Set seed for stratified sampling procedure
+set.seed(5543)
 
 # burnt_after_gridcell: grid cells with post-fire observations 
 burnt_after_gridcell <- sighting |>
@@ -205,15 +249,64 @@ burnt_after_gridcell <- sighting |>
   # [*] S4 constraint: The latest pre-fire period began on 22 May 2018, ensuring no overlap with the post-fire periods.
   dplyr::filter(pfp_start_date <= as.Date(fire1920_timeframe$start_date[1]) - 548) # "2018-05-22" 
 
+# Number of grid cell per vegetation class?  
+sample_size_by_evc <- 
+  dplyr::left_join(
+    burnt_after_gridcell |>
+      dplyr::filter(pfp_id == 1) |>
+      dplyr::select(c(gridcell_id, evc_group)) |>
+      group_by(evc_group) |>
+      summarise(burnt_after_gridcell_count = n_distinct(gridcell_id))
+    ,
+    sighting |> sf::st_drop_geometry() |> 
+      dplyr::filter(burnt == "unburnt" & before_after_fire == "after") |> # PART 3/4: sample_id = "unburnt_after"
+      group_by(evc_group) |>
+      summarise(unburnt_after_gridcell_count = n_distinct(gridcell_id))
+    ,
+    by = c("evc_group")
+) |> 
+  # [S5.1] Determine limiting factor for each evc_group
+  dplyr::mutate(
+    sample_size = pmin(burnt_after_gridcell_count,  unburnt_after_gridcell_count),
+    which_treatment = case_when(
+      burnt_after_gridcell_count <= unburnt_after_gridcell_count ~ "burnt_after",
+      burnt_after_gridcell_count > unburnt_after_gridcell_count ~ "unburnt_after")) 
 
-# APPENDING TOWARD THE FINAL DATASET
+sample_size_by_evc
+
+# [S5.2.1] Perform stratified sampling for burnt_after
+burnt_after_gridcell_stratified_sampled <- 
+  # Data source
+  burnt_after_gridcell |> dplyr::filter(pfp_id==1) |> dplyr::select(evc_group, gridcell_id) |> 
+  # Left join with sample_size_by_evc
+  dplyr::left_join(sample_size_by_evc |> select(c(evc_group, sample_size, which_treatment)),
+            by = "evc_group") |> 
+  dplyr::group_by(evc_group) %>% 
+  dplyr::group_modify(~ slice_sample(.x, n = .x$sample_size[1])) |> # Use `slice_sample` with `n` determined by `sample_size` in each evc_group
+  dplyr::ungroup() |> 
+  dplyr::select(evc_group, gridcell_id) 
+
+# [S5.2.2] Perform stratified sampling for unburnt_after
+  # Data source = # PART 3/4: sample_id = "unburnt_after" 
+  sighting |> sf::st_drop_geometry() |> 
+    dplyr::filter(burnt == "unburnt" & before_after_fire == "after") |> 
+    dplyr::select(evc_group, gridcell_id) |> 
+    unique() |> 
+  # Left join with sample_size_by_evc
+  dplyr::left_join(sample_size_by_evc |> select(c(evc_group, sample_size, which_treatment)),
+            by = "evc_group")
+
+# Checking
+# burnt_after_gridcell_stratified_sampled |> group_by(evc_group) |> summarise(sample_size = n_distinct(gridcell_id))
+
+# APPENDING TOWARD THE FINAL DATASET -------------------------------------------
 sighting_final <- 
 rbind(
   # PART 1/4: sample_id = "burnt_after"
   sighting |> 
     sf::st_drop_geometry() |> 
     dplyr::filter(before_after_fire == "after" & time_since_fire_days <= 548,
-                  gridcell_id %in%  unique(burnt_after_gridcell$gridcell_id)) |> 
+                  gridcell_id %in% unique(burnt_after_gridcell_stratified_sampled$gridcell_id)) |> 
     # Column structure
     select(c("sighting_id", "species_group", "species", "sighting_date", "fire_season", 
              "fire_no", "fire_start_date", "fire_svrty", "evc_group", "before_after_fire", 
@@ -223,8 +316,13 @@ rbind(
   # PART 2/4: sample_id = "burnt_before_xxxx"
   dplyr::left_join(
     # [S2]
-    sighting |> sf::st_drop_geometry() |>  dplyr::filter(before_after_fire == "before"), # x
-    burnt_after_gridcell |> select(-c(fire_start_date, evc_group)), # y
+    ## x (left data)
+    sighting |> sf::st_drop_geometry() |>  dplyr::filter(before_after_fire == "before"),
+    ## y (right data)
+    burnt_after_gridcell |> 
+      dplyr::filter(gridcell_id %in% unique(burnt_after_gridcell_stratified_sampled$gridcell_id)) |> 
+      dplyr::select(-c(fire_start_date, evc_group))
+    ,
     join_by(gridcell_id, between(x$sighting_date, y$pfp_start_date, y$pfp_end_date, bounds = "[]"))
     ) |> 
   dplyr::filter(!is.na(pfp_id)) |> 
@@ -249,30 +347,9 @@ rbind(
 
 # Checking: n_distinct_gc PER evc_group
 # burnt_after_gridcell |> group_by(evc_group) |> summarise(n_distinct_gc = n_distinct(gridcell_id)) 
-# sighting_final |> group_by(evc_group) |> summarise(n_distinct_gc = n_distinct(gridcell_id)) 
+# sighting_final |> group_by(evc_group, burnt) |> summarise(n_distinct_gc = n_distinct(gridcell_id)) 
+
 # ------------------------------------------------------------------------------
-
-# Number of grid cell per vegetation class?  
-sample_size_by_evc <- 
-dplyr::left_join(
-  burnt_after_gridcell |>
-    dplyr::filter(pfp_id == 1) |>
-    dplyr::select(c(gridcell_id, evc_group)) |>
-    group_by(evc_group) |>
-    summarise(burnt_after_gridcell_count = n_distinct(gridcell_id))
-  ,
-  sighting |> sf::st_drop_geometry() |> 
-  dplyr::filter(burnt == "unburnt" & before_after_fire == "after") |> # PART 3/4: sample_id = "unburnt_after"
-  group_by(evc_group) |>
-    summarise(unburnt_after_gridcell_count = n_distinct(gridcell_id))
-  ,
-  by = c("evc_group")
-) |> 
-  #[S5.1] Determine limiting factor for each group
-  dplyr::mutate(sample_size = pmin(burnt_after_gridcell_count,  unburnt_after_gridcell_count)) 
-
-sample_size_by_evc
-
 
 # How many sighting per UNBURNT grid cell AFTER the fire? 
 # sighting |> 

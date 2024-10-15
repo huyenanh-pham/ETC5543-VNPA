@@ -27,7 +27,7 @@ poly_fire_1920|stem|8b6d63de72dba286|507c1ffc311bb350|7a28706474618410|173755861
 poly_laf|stem|3c3fce5f7168edee|55a0d96cdc4caec6|5aa1e47d72a545aa|1994945883||t19971.2117750236s|a4677bedb1fb1cdf|724|rds|local|vector|||0||
 selected_evc_group|stem|bdb4929bc40b605e|40fa4b3fc81da7ae|2c530c1562a7fbd1|-1267715077||t20011.1137875666s|9d1b5dfa151f647e|241|rds|local|vector|||3.66||
 selected_species_group|stem|96e5eaf916fbb4b1|67093ba6ca9e696f|2c530c1562a7fbd1|-1709307885||t20011.1137878394s|b0c128ee413cce30|114|rds|local|vector|||0||
-sighting|stem|d517b6b2b6578eff|d3e482764b11f107|46cdd4ef0c9a251b|40862354||t20011.1170906316s|5bd6fec5274ce1c5|14063365|rds|local|vector|||269.36||
+sighting|stem|ebd7704ec214b4e8|273e8dff81beb429|273c72cd0c2956bd|40862354||t20011.4338212821s|c2fb41a18f03e9ce|22352546|rds|local|vector|||189.78||
 vba_fauna|stem|be51cd75cd61d5dd|b17cff74b2bf589d|ac3f1b8fc7c7706a|-567859376||t19952.1014057428s|2d5f0969c2cea589|307468475|rds|local|vector|||7.4||
 vba_fauna_filepaths|stem|5dbde7c7dae7ff37|a545e67091f33dac|2c530c1562a7fbd1|-325423906||t19947.2959089805s|87fddfa2a4a78bf2|213|rds|local|vector|||2.14|package tidyr was built under R version 4.3.3. package stringr was built under R version 4.3.3|
 vba_fauna_listOfShp|stem|f48c762d4c55def7|3e11f9699d354c0a|3e4eb307453a06c5|488361920||t19952.099662199s|c2571c22d6964136|307544191|rds|local|vector|||176.36||

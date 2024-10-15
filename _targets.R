@@ -223,11 +223,13 @@ list(
       dplyr::group_by(sighting_id) |>
       dplyr::filter(is.na(fire_start_date) | fire_start_date == max(fire_start_date)) |>
       dplyr::ungroup() |>
-      # Join sighting POINTS with with EVC POLYGONS
-      st_join(evc_cropped |> select(evc_group = XGROUPNAME), # |> janitor::clean_names()
-              join = st_within, left = TRUE) |>
-      # Exclude records without evc_group
-      dplyr::filter(evc_group %in% selected_evc_group & !is.na(evc_group)) |>
+      # # Solution 2 --- TURNED OFF ---
+      # # Join sighting POINTS with with EVC POLYGONS
+      # st_join(evc_cropped |> select(evc_group = XGROUPNAME), # |> janitor::clean_names()
+      #         join = st_within, left = TRUE) |>
+      # # Exclude records without evc_group
+      # dplyr::filter(evc_group %in% selected_evc_group & !is.na(evc_group)) |>
+      # -----------------------------
       # Add columns ---------
     dplyr::mutate(
       before_after_fire = case_when(
