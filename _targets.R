@@ -190,24 +190,31 @@ list(
   
   # [2.6]
   tar_target(
-    # Select species_groups
+    # Select species_groups <backlink to eda_ala.qmd>
     selected_species_group,
-    c("Amphibians", "Arthropods", "Birds", "Crustaceans", "Fishes", "Fungi", "Insects", "Mammals", "Molluscs", "Plants", "Reptiles")
+    c("Amphibians", "Birds", "Insects", "Mammals", "Molluscs", "Plants", "Reptiles")
   ),
+  
+  tar_target(
+    # Select vegetation groups <backlink to eda_ala.qmd>
+    selected_evc_group,
+    c("Coastal Scrubs Grasslands and Woodlands", "Dry Forests", "Heathlands", "Lowland Forests", "Montane Grasslands, Shrublands or Woodlands", "Rainforests", "Riparian Scrubs or Swampy Scrubs and Woodlands", "Riverine Grassy Woodlands or Forests", "Rocky Outcrop or Escarpment Scrubs", "Sub-alpine Grasslands, Shrublands or Woodlands", "Wet or Damp Forests", "Wetlands")
+  ),
+  
   tar_target(
     # Define important Dates
     fire1920_start_date,
     lubridate::ymd("2019-11-21")
-  )
-  ,
+  ),
+  
   tar_target(
     # Merge 3 data sources into 1 data object
     sighting,
     ala_sighting |>
       # Subset necessary columns
-      dplyr::select(sighting_id = recordID, species_group, sighting_date = eventDate, sighting_geometry = geometry) |>
+      dplyr::select(sighting_id = recordID, species_group, species, sighting_date = eventDate, sighting_geometry = geometry) |>
       # Subset records
-      dplyr::filter(species_group %in% selected_species_group) |>
+      dplyr::filter(species_group %in% selected_species_group & !is.na(species)) |>
       # Join sighting POINTS with fire POLYGONS
       sf::st_join(fire_history_eas,
                   join = st_within, left = TRUE) |>
@@ -220,7 +227,7 @@ list(
       st_join(evc_cropped |> select(evc_group = XGROUPNAME), # |> janitor::clean_names()
               join = st_within, left = TRUE) |>
       # Exclude records without evc_group
-      dplyr::filter(!is.na(evc_group)) |>
+      dplyr::filter(evc_group %in% selected_evc_group & !is.na(evc_group)) |>
       # Add columns ---------
     dplyr::mutate(
       before_after_fire = case_when(
