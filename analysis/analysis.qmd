@@ -82,8 +82,8 @@ sighting_gridcell <- terra::extract(
 sighting <- base::cbind(sighting, sighting_gridcell["gridcell_id"])
 
 # 6. Wrangling
-sighting <- sighting |> 
-  dplyr::filter(evc_group != "Plains Grasslands and Chenopod Shrublands") # n_burnt_after = 0
+# sighting <- sighting |> 
+#   dplyr::filter(evc_group != "Plains Grasslands and Chenopod Shrublands") # n_burnt_after = 0
 
 ```
 
@@ -164,8 +164,15 @@ To create comparable pre-fire periods, we first defined the pre-fire period star
 <!-- [S4] -->
 Step 4: Creating multiple pre-fire periods  
 Then, we generated nine pre-fire periods: the next pre-fire period starting were determined by offsetting the preceding one by 46 days (1.5 months). Each pre-fire period extended for 548 days (18 months) to match length of the post-fire period. The latest pre-fire period began on 22 May 2018, ensuring no overlap with the post-fire periods.  
+<!-- [*] constraint -->
 
-Purpose of Controlling the time-since-fire: This careful construction of pre-fire sampling periods ensures that the pre-fire data collection occurred over timeframes mirroring those of the post-fire period. Hence, this minimises the potential influence natural fluctuation in biodiversity on the results. This control was crucial as biodiversity naturally varies over time due to factors, such as (1) cyclical patterns of abundance of many species, and (2) the long-term trends of environmental changes or species interactions. 
+Purpose of Controlling the time-since-fire: This careful construction of pre-fire sampling periods ensures that the pre-fire data collection occurred over timeframes mirroring those of the post-fire period. Hence, this minimises the potential influence natural fluctuation in biodiversity on the results. This control was crucial as biodiversity naturally varies over time due to factors, such as (1) cyclical patterns of abundance of many species, and (2) the long-term trends of environmental changes or species interactions.   
+
+<!-- [S4] -->
+Step 5: Select unburnt grid cells  <!-- to-rewrite -->
+
+- The same number of grid cells in the burnt region assigned to each vegetation class (from which habitat was derived; see Section 2.3) was then randomly selected from areas which were not burnt by the 2019–2020 fires.  
+- When burnt or unburnt regions had unequal grid cell numbers per vegetation class, grid cells were randomly removed from the treatment with the higher value, to ensure equal spatial and vegetation class coverage between treatments. <!-- Fire severity, fire date, and habitat values were then extracted for each research- grade iNaturalist observation with ≤1000 m accuracy (such that observations would only be a maximum of one grid cell offset), resulting in a dataset of species observations at 1000 m resolution, with associated fire severity, fire date, and habitat. -->
 
 ```{r}
 #| eval: false 
@@ -177,57 +184,49 @@ as.Date("2019-11-22") - 548
 as.Date("2018-05-22") + 548
 as.Date("2019-11-22") - as.Date("2018-02-19")
 ```
+
 ```{r}
 
 # burnt_after_gridcell: grid cells with post-fire observations 
 burnt_after_gridcell <- sighting |>
   sf::st_drop_geometry() |>
-  # [S1]
-  dplyr::filter(before_after_fire == "after" & time_since_fire_days <= 548) |>
-  select(gridcell_id, fire_start_date) |>
-  unique() |> # 11,168 unique gridcell_id
+  # [S1] Fixed post-fire period  
+  dplyr::filter(before_after_fire == "after" & time_since_fire_days <= 548) |> 
+  select(gridcell_id, evc_group, fire_start_date) |>
+  unique() |> # 10,932 unique gridcell_id
+  # [S4] Creating multiple pre-fire periods 
   dplyr::slice(rep(1:n(), each = 9)) |>             # Replicate each row 9 times (9 pre-fire periods)
   dplyr::group_by(gridcell_id, fire_start_date) |>  # Group by original columns
   dplyr::mutate(pfp_id = row_number()) |>           # Create ID column for each replication (pre-fire period ID)
   ungroup() |> 
   dplyr::mutate(
-    pfp_start_date = fire_start_date - 1029 + (pfp_id - 1) * 46,
+    pfp_start_date = fire_start_date - 1029 + (pfp_id - 1) * 46, # [S3] Determining the pre-fire period  
     pfp_end_date   = pfp_start_date + 548) |> 
-  # pull() 
-  dplyr::filter(pfp_start_date <= as.Date(fire1920_timeframe$start_date[1]) - 548) # "2018-05-22" The latest pre-fire period began on 22 May 2018, ensuring no overlap with the post-fire periods.
-  
-sighting |> 
-  sf::st_drop_geometry() |> 
-    # [S2] Extract ALA sighting observations only from grid cells with post-fire observations 
-  dplyr::filter(
-    before_after_fire == "before",
-    gridcell_id %in% burnt_after_gridcell[burnt_after_gridcell[["pfp_id"]] == 1, ][["gridcell_id"]]) |> 
-  # group_by(gridcell_id) |> summarise(n=n())
-  dplyr::filter(gridcell_id == "27203575") 
-  
+  # [*] S4 constraint: The latest pre-fire period began on 22 May 2018, ensuring no overlap with the post-fire periods.
+  dplyr::filter(pfp_start_date <= as.Date(fire1920_timeframe$start_date[1]) - 548) # "2018-05-22" 
 
-
-
-  
 
 # APPENDING TOWARD THE FINAL DATASET
-
+sighting_final <- 
 rbind(
-  # part 1/4: sample_id = "burnt_after"
-sighting |> 
-  sf::st_drop_geometry() |> 
-  # Column structure
-  select(c("sighting_id", "species_group", "species", "sighting_date", "fire_season", 
-           "fire_no", "fire_start_date", "fire_svrty", "evc_group", "before_after_fire", 
-           "burnt", "sample", "time_since_fire_days", "gridcell_id")) |> 
-  dplyr::filter(before_after_fire == "after" & time_since_fire_days <= 548) |> 
-  dplyr::mutate(sample_id = "burnt_after")
+  # PART 1/4: sample_id = "burnt_after"
+  sighting |> 
+    sf::st_drop_geometry() |> 
+    dplyr::filter(before_after_fire == "after" & time_since_fire_days <= 548,
+                  gridcell_id %in%  unique(burnt_after_gridcell$gridcell_id)) |> 
+    # Column structure
+    select(c("sighting_id", "species_group", "species", "sighting_date", "fire_season", 
+             "fire_no", "fire_start_date", "fire_svrty", "evc_group", "before_after_fire", 
+             "burnt", "sample", "time_since_fire_days", "gridcell_id")) |> 
+    dplyr::mutate(sample_id = "burnt_after") 
   ,
-  # part 2/4: sample_id = "burnt_before_xxxx"
-  dplyr::left_join(sighting |> sf::st_drop_geometry() |>  dplyr::filter(before_after_fire == "before"), # x
-                 burnt_after_gridcell |> select(-c(fire_start_date)), # y
-            join_by(gridcell_id, between(x$sighting_date, y$pfp_start_date, y$pfp_end_date, bounds = "[]"))
-            ) |> 
+  # PART 2/4: sample_id = "burnt_before_xxxx"
+  dplyr::left_join(
+    # [S2]
+    sighting |> sf::st_drop_geometry() |>  dplyr::filter(before_after_fire == "before"), # x
+    burnt_after_gridcell |> select(-c(fire_start_date, evc_group)), # y
+    join_by(gridcell_id, between(x$sighting_date, y$pfp_start_date, y$pfp_end_date, bounds = "[]"))
+    ) |> 
   dplyr::filter(!is.na(pfp_id)) |> 
   dplyr::mutate(sample_id = case_match(
     pfp_id,
@@ -248,7 +247,40 @@ sighting |>
            "burnt", "sample", "time_since_fire_days", "gridcell_id","sample_id")) 
 )
 
+# Checking: n_distinct_gc PER evc_group
+# burnt_after_gridcell |> group_by(evc_group) |> summarise(n_distinct_gc = n_distinct(gridcell_id)) 
+# sighting_final |> group_by(evc_group) |> summarise(n_distinct_gc = n_distinct(gridcell_id)) 
+# ------------------------------------------------------------------------------
 
+# Number of grid cell per vegetation class?  
+sample_size_by_evc <- 
+dplyr::left_join(
+  burnt_after_gridcell |>
+    dplyr::filter(pfp_id == 1) |>
+    dplyr::select(c(gridcell_id, evc_group)) |>
+    group_by(evc_group) |>
+    summarise(burnt_after_gridcell_count = n_distinct(gridcell_id))
+  ,
+  sighting |> sf::st_drop_geometry() |> 
+  dplyr::filter(burnt == "unburnt" & before_after_fire == "after") |> # PART 3/4: sample_id = "unburnt_after"
+  group_by(evc_group) |>
+    summarise(unburnt_after_gridcell_count = n_distinct(gridcell_id))
+  ,
+  by = c("evc_group")
+) |> 
+  #[S5.1] Determine limiting factor for each group
+  dplyr::mutate(sample_size = pmin(burnt_after_gridcell_count,  unburnt_after_gridcell_count)) 
+
+sample_size_by_evc
+
+
+# How many sighting per UNBURNT grid cell AFTER the fire? 
+# sighting |> 
+#   sf::st_drop_geometry() |> 
+#   dplyr::filter(burnt == "burnt" & before_after_fire == "after") |> 
+#   group_by(gridcell_id) |>
+#   summarise(sighting_count = n()) |> 
+#   arrange(desc(sighting_count))
 
 ```
 
