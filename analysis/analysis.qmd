@@ -17,7 +17,8 @@ execute:
 # Library
 lib <- c("targets","tarchetypes",
          "tidyverse","sf","galah","terra",
-         "tidyterra","tmap","leaflet","plotly")
+         "tidyterra","tmap","leaflet","plotly",
+         "iNEXT")
 invisible(lapply(lib, library, character.only = TRUE))
 rm(lib)
 
@@ -44,8 +45,10 @@ fire1920_timeframe <- data.frame(
   end_date = as.POSIXct(c("2020-03-01", "2020-03-01")))
 
 # Define color palette
-report_pal <- setNames(RColorBrewer::brewer.pal(n=8,name="Set2")[c(1,2)],
-              c("parkres","fire"))
+report_pal <- setNames(c(RColorBrewer::brewer.pal(n=8,name="Set2")[c(1,2)],
+                       "#F57C00", "#0D47A1","#FFCC80","#E3F2FD"),
+              c("parkres","fire",
+                "burnt_after", "unburnt_after", "burnt_before", "unburnt_before"))
 ```
 
 ```{r}
@@ -485,6 +488,7 @@ rbind(
              "before_after_fire", "burnt", "sample", "gridcell_id", "sample_id")) 
   ,
   # PART 4/4: sample_id = "unburnt_before_xxxx"
+  # [S5.4.2]
 	dplyr::left_join(
 	  # [S2]
 	  # [S2.1] Extract ALA sighting observations only from grid cells with post-fire observations
@@ -549,16 +553,14 @@ sighting_final |>
   pivot_wider(names_from = burnt, values_from = gridcell_count) |> 
   dplyr::mutate(gridcell_diff = burnt - unburnt)
 ```
+### Statistical Estimation   
 
-
-### Transformation   
 ```{r}
 # TRANSFORM INTO iNEXT SUPPORTED INPUT FORMAT
-sp1 <- sighting |> 
-  sf::st_drop_geometry() |> 
-  group_by(sample, species) |> 
+sp1 <- sighting_final |> 
+  group_by(sample_id, species) |> 
   summarise(n = n()) |> 
-  tidyr::pivot_wider(names_from = sample, values_from = n, values_fill = NULL)
+  tidyr::pivot_wider(names_from = sample_id, values_from = n, values_fill = NULL)
 sp1 |> head(10)
 
 # Convert df into list of numeric vectors 
@@ -568,28 +570,25 @@ sp1_list <- lapply(as.list(sp1[,-1]), na.omit)
 
 # Preview list of vectors 
 lapply(sp1_list, function(x) head(x, 10))
-```
 
-### Statistical Estimation   
-```{r}
 # ESTIMATE BIODIVERSITY
-sp1_output <- estimateD(sp1_list, datatype="abundance", base="size", level=NULL, conf=0.95)
+sp1_output <- iNEXT::estimateD(sp1_list, datatype="abundance", base="size", level=NULL, conf=0.95)
 
 # Results
 sp1_output
 
-```
-
-```{r}
 # FOREST PLOT 
 sp1_output |> 
-  ggplot(aes(x=Assemblage, y=qD, color = Assemblage)) + 
-  geom_point() + 
+  dplyr::mutate(Assemblage_Group = sub("_[0-9]+$", "", Assemblage)) |> 
+  ggplot(aes(x = Assemblage, y = qD, color = Assemblage_Group)) + 
+  geom_point(size = 2) + 
   ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
-                         #, linewidth = ebsize, width = ebw
+                         , linewidth = 1 #, width = 1
   ) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
   facet_wrap(~Order.q) + 
-  theme(legend.position = "bottom")
+  theme_bw() + 
+  theme(legend.position = "bottom", aspect.ratio = 1/1)
 ```
 
 # Appendix  
