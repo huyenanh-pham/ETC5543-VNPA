@@ -285,7 +285,7 @@ as.Date("2019-11-22") - as.Date("2018-02-19")
 ```
 
 ```{r}
-# Set seed for stratified sampling procedure
+# Set seed for reproducibility (stratified sampling procedure)
 set.seed(5543)
 
 # burnt_after_gridcell: grid cells with post-fire observations 
@@ -356,7 +356,22 @@ unburnt_after_gridcell_stratified_sampled <-
   dplyr::group_by(evc_group) %>% 
   dplyr::group_modify(~ slice_sample(.x, n = .x$sample_size[1])) |> # Use `slice_sample` with `n` determined by `sample_size` in each evc_group
   dplyr::ungroup() |> 
-  dplyr::select(evc_group, gridcell_id) 
+  dplyr::select(evc_group, gridcell_id) |> 
+  # [S5.2.3] Randomly allocate the fire_start_date from burnt_after to unburnt_after grid cells with the same vegetation class
+  cbind(
+    burnt_after_gridcell_stratified_sampled |> 
+      dplyr::group_by(evc_group) |> # Group by evc_group
+      slice_sample(prop = 1) |> # Shuffle within each evc_group by sampling all rows
+      ungroup() |> 
+      dplyr::rename(fire_start_date_shuffled = fire_start_date) |> 
+      select(fire_start_date_shuffled)
+    # [!] Checking proportion of each evc_group in the shuffled sample
+    # cbind(burnt_after_gridcell_stratified_sampled) |> 
+    # group_by(evc_group, fire_start_date_shuffled) |>
+    # summarise(n=n()) |> 
+    # mutate(prop = n/sum(n))
+  ) |> 
+  dplyr::rename(fire_start_date = fire_start_date_shuffled)
 
 # [!] Checking: [**] constraint of Number of grid cells in the burnt region = in the unburnt region -> 0 = PASS
 # cbind(
@@ -370,9 +385,6 @@ unburnt_after_gridcell_stratified_sampled <-
 # ) |>
 #   mutate(checking = burnt_after_sample_size - unburnt_after_sample_size)
 
-# [S5.2.3] Randomly allocate the fire_start_date from burnt_after to unburnt_after grid cells with the same vegetation class
-
-
 # APPENDING TOWARD THE FINAL DATASET -------------------------------------------
 sighting_final <- 
 rbind(
@@ -381,17 +393,17 @@ rbind(
     sf::st_drop_geometry() |> 
     dplyr::filter(before_after_fire == "after" & time_since_fire_days <= 548,
                   gridcell_id %in% unique(burnt_after_gridcell_stratified_sampled$gridcell_id)) |> 
+    dplyr::mutate(sample_id = "burnt_after") |> 
     # Column structure
-    select(c("sighting_id", "species_group", "species", "sighting_date", "fire_season", 
-             "fire_no", "fire_start_date", "fire_svrty", "evc_group", "before_after_fire", 
-             "burnt", "sample", "time_since_fire_days", "gridcell_id")) |> 
-    dplyr::mutate(sample_id = "burnt_after") 
+    select(c("sighting_id", "species_group", "species", "sighting_date", "evc_group",
+             "fire_no", "fire_start_date", "time_since_fire_days",
+             "before_after_fire", "burnt", "sample", "gridcell_id", "sample_id")) 
   ,
   # PART 2/4: sample_id = "burnt_before_xxxx"
   dplyr::left_join(
     # [S2]
     ## x (left data)
-    sighting |> sf::st_drop_geometry() |>  dplyr::filter(before_after_fire == "before"),
+    sighting |> sf::st_drop_geometry() |>  dplyr::filter(burnt == "burnt" & before_after_fire == "before"),
     ## y (right data)
     burnt_after_gridcell |> 
       dplyr::filter(gridcell_id %in% unique(burnt_after_gridcell_stratified_sampled$gridcell_id)) |> 
@@ -413,10 +425,27 @@ rbind(
     9  ~ 'burnt_before_661'
     )
   ) |> 
-  # Column structure
-  select(c("sighting_id", "species_group", "species", "sighting_date", "fire_season", 
-           "fire_no", "fire_start_date", "fire_svrty", "evc_group", "before_after_fire", 
-           "burnt", "sample", "time_since_fire_days", "gridcell_id","sample_id")) 
+    # Column structure
+    select(c("sighting_id", "species_group", "species", "sighting_date", "evc_group",
+             "fire_no", "fire_start_date", "time_since_fire_days",
+             "before_after_fire", "burnt", "sample", "gridcell_id", "sample_id"))
+  ,
+  # PART 3/4: sample_id = "unburnt_after"  
+  sighting |> sf::st_drop_geometry() |> 
+    dplyr::filter(burnt == "unburnt" & before_after_fire == "after") |>
+    dplyr::select(-c(fire_start_date)) |> 
+    # Subset only sampled gridcell_id
+    dplyr::inner_join(unburnt_after_gridcell_stratified_sampled, by = c("gridcell_id", "evc_group")) |>
+    dplyr::mutate(
+      sample_id = "unburnt_after",
+      time_since_fire_days = as.numeric(lubridate::ymd(sighting_date) - lubridate::ymd(fire_start_date))
+      ) |> 
+    dplyr::filter(time_since_fire_days <= 548) |> # [*] constraint in [S1]
+    # Column structure
+    select(c("sighting_id", "species_group", "species", "sighting_date", "evc_group",
+             "fire_no", "fire_start_date", "time_since_fire_days",
+             "before_after_fire", "burnt", "sample", "gridcell_id", "sample_id")) 
+  # PART 4/4: sample_id = "unburnt_before_xxxx"  
 )
 
 # Checking: n_distinct_gc PER evc_group
@@ -432,6 +461,8 @@ rbind(
 #   group_by(gridcell_id) |>
 #   summarise(sighting_count = n()) |> 
 #   arrange(desc(sighting_count))
+
+
 
 ```
 
