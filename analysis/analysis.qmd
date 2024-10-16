@@ -246,7 +246,9 @@ Step 1: Fixed post-fire period
 We established a fixed post-fire period of 548 days (18 months) for all areas impacted by the fire. This period began on the fire start date of each grid cell and extended for 18 months afterward. Reasoning behind the selection of 548 days (ref to Appendix 2). 
 
 <!-- [S2] -->
-Step 2: For pre-fire samples, extract ALA sighting observations only from grid cells with post-fire observations (cells with sightings after the fire start date).
+Step 2: For pre-fire samples, extract ALA sighting observations only from grid cells with post-fire observations (cells with sightings after the fire start date). Create simulated fire_start_date instead of using the actual raw data. Hence, the time-since-fire days for these grid cells are artifical and do not exceed 548 days.  
+<!-- [S2.1] -->
+<!-- [S2.2] Create simulated fire_start_date instead of using the actual raw data -->
 
 <!-- [S3] -->
 Step 3: Determining the pre-fire period  
@@ -401,7 +403,8 @@ rbind(
   ,
   # PART 2/4: sample_id = "burnt_before_xxxx"
   dplyr::left_join(
-    # [S2]
+    # [S2] 
+    # [S2.1] Extract ALA sighting observations only from grid cells with post-fire observations
     ## x (left data)
     sighting |> sf::st_drop_geometry() |>  dplyr::filter(burnt == "burnt" & before_after_fire == "before"),
     ## y (right data)
@@ -411,7 +414,13 @@ rbind(
     ,
     join_by(gridcell_id, between(x$sighting_date, y$pfp_start_date, y$pfp_end_date, bounds = "[]"))
     ) |> 
-  dplyr::filter(!is.na(pfp_id)) |> 
+    dplyr::filter(!is.na(pfp_id)) |> 
+    # [S2.2] Create simulated fire_start_date instead of using the actual raw data ---
+      dplyr::select(-c(fire_start_date)) |> 
+      dplyr::rename(fire_start_date = pfp_start_date) |> 
+      dplyr::mutate(time_since_fire_days = as.numeric(lubridate::ymd(sighting_date) - lubridate::ymd(fire_start_date))) |> 
+    # ---
+  # sample_id
   dplyr::mutate(sample_id = case_match(
     pfp_id,
     1  ~ 'burnt_before_1029',
@@ -452,6 +461,8 @@ rbind(
 # burnt_after_gridcell |> group_by(evc_group) |> summarise(n_distinct_gc = n_distinct(gridcell_id)) 
 # sighting_final |> group_by(evc_group, burnt) |> summarise(n_distinct_gc = n_distinct(gridcell_id)) 
 
+# [!] Checking: time_since_fire_days is within 548 d -> 0 = PASS
+# max(sighting_final$time_since_fire_days) - 548
 # ------------------------------------------------------------------------------
 
 # How many sighting per UNBURNT grid cell AFTER the fire? 
