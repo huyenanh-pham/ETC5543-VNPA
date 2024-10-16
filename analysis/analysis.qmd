@@ -269,11 +269,18 @@ Step 5: Select unburnt grid cells  <!-- to-rewrite -->
 - When burnt or unburnt regions had unequal grid cell numbers per vegetation class, grid cells were randomly removed from the treatment with the higher value, to ensure equal spatial and vegetation class coverage between treatments. <!-- Fire severity, fire date, and habitat values were then extracted for each research- grade iNaturalist observation with ≤1000 m accuracy (such that observations would only be a maximum of one grid cell offset), resulting in a dataset of species observations at 1000 m resolution, with associated fire severity, fire date, and habitat. -->
 
 - [S5.1] Determine limiting factor for each evc_group: For each vegetation group, identify whether the burnt or unburnt cells are fewer in number. This will be the limiting factor for that group.  
+
 - [S5.2] Set sample size then random sampling within strata: For each vegetation group, set the sample size equal to the number of cells in the limiting category (burnt or unburnt). This ensures equal representation. Then, randomly sample grid cells within each stratum: 
 + For the limiting category, select all available cells.
 + For the non-limiting category, randomly select the same number of cells as in the limiting category.  
 This procedure is applied for all vegetation groups.   
-- [S5.3] Randomly allocate the fire_start_date from burnt_after to unburnt_after grid cells with the same vegetation class.
+
+- [S5.3] Randomly allocate the fire_start_date from burnt_after to unburnt_after grid cells with the same vegetation class.  
+
+- [S5.4] Subsequent creation of unburnt “before” periods followed the same methodology as described above. 
++ [S5.4.1] Create multiple pre-fire periods for unburnt_before grid cells.
++ [S5.4.2] Select observations in unburnt_before_xxxx
+
 
 ```{r}
 #| eval: false 
@@ -359,7 +366,7 @@ unburnt_after_gridcell_stratified_sampled <-
   dplyr::group_modify(~ slice_sample(.x, n = .x$sample_size[1])) |> # Use `slice_sample` with `n` determined by `sample_size` in each evc_group
   dplyr::ungroup() |> 
   dplyr::select(evc_group, gridcell_id) |> 
-  # [S5.2.3] Randomly allocate the fire_start_date from burnt_after to unburnt_after grid cells with the same vegetation class
+  # [S5.3] Randomly allocate the fire_start_date from burnt_after to unburnt_after grid cells with the same vegetation class
   cbind(
     burnt_after_gridcell_stratified_sampled |> 
       dplyr::group_by(evc_group) |> # Group by evc_group
@@ -375,7 +382,7 @@ unburnt_after_gridcell_stratified_sampled <-
   ) |> 
   dplyr::rename(fire_start_date = fire_start_date_shuffled)
 
-# [!] Checking: [**] constraint of Number of grid cells in the burnt region = in the unburnt region -> 0 = PASS
+# #[!] Checking: [**] constraint of Number of grid cells in the burnt region = in the unburnt region -> 0 = PASS
 # cbind(
 #   burnt_after_gridcell_stratified_sampled |>
 #     group_by(evc_group) |>
@@ -386,6 +393,26 @@ unburnt_after_gridcell_stratified_sampled <-
 #     dplyr::select(unburnt_after_sample_size)
 # ) |>
 #   mutate(checking = burnt_after_sample_size - unburnt_after_sample_size)
+# #---
+
+# [S5.4]
+# [S5.4.1] Create multiple pre-fire periods for unburnt_before grid cells  
+unburnt_after_gridcell <- unburnt_after_gridcell_stratified_sampled |> 
+  select(gridcell_id, evc_group, fire_start_date) |>
+  # [S4] Creating multiple pre-fire periods 
+  dplyr::slice(rep(1:n(), each = 9)) |>             # Replicate each row 9 times (9 pre-fire periods)
+  dplyr::group_by(gridcell_id, fire_start_date) |>  # Group by original columns
+  dplyr::mutate(pfp_id = row_number()) |>           # Create ID column for each replication (pre-fire period ID)
+  ungroup() |> 
+  dplyr::mutate(
+    pfp_start_date = fire_start_date - 1029 + (pfp_id - 1) * 46, # [S3] Determining the pre-fire period  
+    pfp_end_date   = pfp_start_date + 548) |> 
+  # [*] S4 constraint: The latest pre-fire period began on 22 May 2018, ensuring no overlap with the post-fire periods.
+  dplyr::filter(pfp_start_date <= as.Date(fire1920_timeframe$start_date[1]) - 548) # "2018-05-22" 
+
+# #[!] Checking: unburnt_after_gridcell_stratified_sampled$gridcell_id is unique -> 0 = PASS
+# length(unique(unburnt_after_gridcell_stratified_sampled$gridcell_id)) - nrow(unburnt_after_gridcell_stratified_sampled)
+# #---
 
 # APPENDING TOWARD THE FINAL DATASET -------------------------------------------
 sighting_final <- 
@@ -406,7 +433,8 @@ rbind(
     # [S2] 
     # [S2.1] Extract ALA sighting observations only from grid cells with post-fire observations
     ## x (left data)
-    sighting |> sf::st_drop_geometry() |>  dplyr::filter(burnt == "burnt" & before_after_fire == "before"),
+    sighting |> sf::st_drop_geometry() |>  
+      dplyr::filter(burnt == "burnt" & before_after_fire == "before"),
     ## y (right data)
     burnt_after_gridcell |> 
       dplyr::filter(gridcell_id %in% unique(burnt_after_gridcell_stratified_sampled$gridcell_id)) |> 
@@ -416,9 +444,10 @@ rbind(
     ) |> 
     dplyr::filter(!is.na(pfp_id)) |> 
     # [S2.2] Create simulated fire_start_date instead of using the actual raw data ---
-      dplyr::select(-c(fire_start_date)) |> 
-      dplyr::rename(fire_start_date = pfp_start_date) |> 
-      dplyr::mutate(time_since_fire_days = as.numeric(lubridate::ymd(sighting_date) - lubridate::ymd(fire_start_date))) |> 
+      dplyr::select(-c(fire_start_date)) |>              # Remove actual raw fire_start_date
+      dplyr::rename(fire_start_date = pfp_start_date) |> # Simulated fire_start_date
+      dplyr::mutate(                                     # Recalculate time_since_fire_days
+        time_since_fire_days = as.numeric(lubridate::ymd(sighting_date) - lubridate::ymd(fire_start_date))) |> 
     # ---
   # sample_id
   dplyr::mutate(sample_id = case_match(
@@ -454,7 +483,45 @@ rbind(
     select(c("sighting_id", "species_group", "species", "sighting_date", "evc_group",
              "fire_no", "fire_start_date", "time_since_fire_days",
              "before_after_fire", "burnt", "sample", "gridcell_id", "sample_id")) 
-  # PART 4/4: sample_id = "unburnt_before_xxxx"  
+  ,
+  # PART 4/4: sample_id = "unburnt_before_xxxx"
+	dplyr::left_join(
+	  # [S2]
+	  # [S2.1] Extract ALA sighting observations only from grid cells with post-fire observations
+	  ## x (left data)
+	  sighting |> sf::st_drop_geometry() |>  
+		dplyr::filter(burnt == "unburnt" & before_after_fire == "before"),
+	  ## y (right data)
+	  unburnt_after_gridcell |> 
+		dplyr::select(-c(fire_start_date, evc_group))
+	  ,
+	  join_by(gridcell_id, between(x$sighting_date, y$pfp_start_date, y$pfp_end_date, bounds = "[]"))
+	  ) |> 
+	  dplyr::filter(!is.na(pfp_id)) |> 
+	  # [S2.2] Create simulated fire_start_date instead of using the actual raw data ---
+		  dplyr::select(-c(fire_start_date)) |>              # Remove actual raw fire_start_date
+		  dplyr::rename(fire_start_date = pfp_start_date) |> # Simulated fire_start_date
+		  dplyr::mutate(                                     # Recalculate time_since_fire_days
+			time_since_fire_days = as.numeric(lubridate::ymd(sighting_date) - lubridate::ymd(fire_start_date))) |> 
+		# ---
+	  # sample_id
+	  dplyr::mutate(sample_id = case_match(
+		  pfp_id,
+		  1  ~ 'unburnt_before_1029',
+		  2  ~ 'unburnt_before_983',
+		  3  ~ 'unburnt_before_937',
+		  4  ~ 'unburnt_before_891',
+		  5  ~ 'unburnt_before_845',
+		  6  ~ 'unburnt_before_799',
+		  7  ~ 'unburnt_before_753',
+		  8  ~ 'unburnt_before_707',
+		  9  ~ 'unburnt_before_661'
+	    )
+	  ) |> 
+		# Column structure
+		select(c("sighting_id", "species_group", "species", "sighting_date", "evc_group",
+				 "fire_no", "fire_start_date", "time_since_fire_days",
+				 "before_after_fire", "burnt", "sample", "gridcell_id", "sample_id")) 
 )
 
 # Checking: n_distinct_gc PER evc_group
@@ -465,38 +532,20 @@ rbind(
 # max(sighting_final$time_since_fire_days) - 548
 # ------------------------------------------------------------------------------
 
-# How many sighting per UNBURNT grid cell AFTER the fire? 
-# sighting |> 
-#   sf::st_drop_geometry() |> 
-#   dplyr::filter(burnt == "burnt" & before_after_fire == "after") |> 
-#   group_by(gridcell_id) |>
-#   summarise(sighting_count = n()) |> 
-#   arrange(desc(sighting_count))
-
-
-
+# How many grid cell per sample_id? 
+# sighting_final |>
+#   sf::st_drop_geometry() |>
+#   group_by(sample_id) |>
+#   summarise(gridcell_count = n_distinct(gridcell_id))
 ```
 
 
-```{r}
-sighting |> 
-  sf::st_drop_geometry() |>  
-  dplyr::filter(sample == "burnt_after") |>
-  select(gridcell_id,
-         sighting_date,
-         fire_start_date,
-         time_since_fire_days) |> 
-  dplyr::filter(time_since_fire_days <= 548) 
-```
-
-
-Number of unburnt and burn grid cell per vegetation class  
+Number of burnt and unburnt grid cells per vegetation class  
 
 ```{r}
-sighting |> 
-  sf::st_drop_geometry() |> 
+sighting_final |> 
   group_by(evc_group, burnt) |> 
-  summarise(gridcell_count = n()) |> 
+  summarise(gridcell_count = n_distinct(gridcell_id)) |> 
   pivot_wider(names_from = burnt, values_from = gridcell_count) |> 
   dplyr::mutate(gridcell_diff = burnt - unburnt)
 ```
