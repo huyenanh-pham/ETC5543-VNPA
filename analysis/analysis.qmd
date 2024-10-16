@@ -555,38 +555,65 @@ sighting_final |>
 ```
 ### Statistical Estimation   
 
+**Sampling completeness**  
+Sampling completeness: how well the collected sample represents the true diversity of the entire community.  
+
+The importance of controlling the Sampling completeness: It is essential to control for sampling completeness because diversity estimates (like species richness, Shannon diversity, and Simpson diversity) tend to increase as sampling effort and completeness rise. Failure to account for variations in sampling effort can introduce biases and lead to inaccurate comparisons between different treatments or groups.
+
 ```{r}
-# TRANSFORM INTO iNEXT SUPPORTED INPUT FORMAT
-sp1 <- sighting_final |> 
-  group_by(sample_id, species) |> 
-  summarise(n = n()) |> 
-  tidyr::pivot_wider(names_from = sample_id, values_from = n, values_fill = NULL)
-sp1 |> head(10)
+# [sp1] all species groups
+# [SE1] TRANSFORM INTO iNEXT datatype="incidence_freq" SUPPORTED INPUT FORMAT
+
+sp1 <- rbind(
+  #[1] T (NUMBER OF SAMPLING UNITS)
+  sighting_final |> 
+    group_by(sample_id) |> 
+    summarise(T = n_distinct(gridcell_id)) |> 
+    pivot_wider(names_from = sample_id, values_from = T, values_fill = NULL)
+  ,
+  #[2] SPECIES INCIDENCE FREQUENCIES: Number of grid cells in which ith species was sighted
+  sighting_final |> 
+    group_by(sample_id, species) |> 
+    summarise(y.i = n_distinct(gridcell_id)) |> 
+    dplyr::ungroup() |> 
+    # filter(species == "Acacia dealbata") 
+    tidyr::pivot_wider(names_from = sample_id, values_from = y.i, values_fill = NULL) |> 
+    dplyr::select(-c(species))
+  )
 
 # Convert df into list of numeric vectors 
-sp1_list <- lapply(as.list(sp1[,-1]), na.omit) 
-
-# sp1_list[c("burnt_after","burnt_before","unburnt_after","unburnt_before")]
+sp1_list <- lapply(as.list(sp1), na.omit) 
 
 # Preview list of vectors 
 lapply(sp1_list, function(x) head(x, 10))
 
-# ESTIMATE BIODIVERSITY
-sp1_output <- iNEXT::estimateD(sp1_list, datatype="abundance", base="size", level=NULL, conf=0.95)
+# [SE2] ESTIMATE BIODIVERSITY
+Sys.time()
+# 5 mins for q=0
+# 7 mins for q=c(0,1,2)
+sp1_output <- 
+  rbind(
+    iNEXT::estimateD(x = sp1_list, q = c(0), datatype="incidence_freq", base="coverage", level=NULL, conf=0.95)
+    # ,
+    # iNEXT::estimateD(x = sp1_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=1, conf=0.95),
+  )
+Sys.time()
 
-# Results
-sp1_output
+sp1_output_q12 <- iNEXT::estimateD(x = sp1_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=0.9, conf=0.95)
+Sys.time()
 
+rbind(sp1_output, sp1_output_q12)
 # FOREST PLOT 
-sp1_output |> 
+# sp1_output |> 
+rbind(sp1_output, sp1_output_q12) |> 
   dplyr::mutate(Assemblage_Group = sub("_[0-9]+$", "", Assemblage)) |> 
   ggplot(aes(x = Assemblage, y = qD, color = Assemblage_Group)) + 
   geom_point(size = 2) + 
   ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
-                         , linewidth = 1 #, width = 1
+                         #, linewidth = 1 , width = 1
   ) +
   scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
-  facet_wrap(~Order.q) + 
+  facet_wrap(~Order.q, scales = "free_y") + 
   theme_bw() + 
   theme(legend.position = "bottom", aspect.ratio = 1/1)
 ```
