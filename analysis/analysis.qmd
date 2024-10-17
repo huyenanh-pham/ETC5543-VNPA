@@ -1015,78 +1015,6 @@ sp3_insects_output |>
 # [1.x] species_group=="Insects" <end> -------------------------------------------
 ```
 
-##### sp3_plants  
-
-```{r}
-# [1.x] species_group=="Plants" <start> -----------------------------------------
-# Convert df into list of numeric vectors 
-sp3_plants_list <- lapply(
-  as.list(
-    sp3 |> 
-      filter(species_group=="Plants") |> 
-      select(-c(species_group, species))
-  ), 
-  na.omit) 
-
-# Preview list of vectors 
-# lapply(sp3_plants_list, function(x) head(x, 10))
-
-# [SE2] ESTIMATE BIODIVERSITY
-
-# [SE2.1] Get Base coverage 
-# sp3_plants_iNEXT <- iNEXT::iNEXT(sp3_plants_list, q=0, datatype="incidence_freq")
-# # Step 3. The suggested base coverage is the maximum of C_a and C_b
-# sp3_plants_level <- max(
-#   # Step 1. Compute the maximum coverage of reference sample sizes
-#   max(sp3_plants_iNEXT$DataInfo$SC),
-#   # Step 2. Compute the minimum coverage of r times reference sample sizes. r = 2
-#   sp3_plants_iNEXT$iNextEst$coverage_based |>
-#     dplyr::group_by(Assemblage) |>
-#     dplyr::slice_max(t, n = 1) %>%
-#     dplyr::ungroup() |>
-#     select(SC) |>
-#     min()
-# )
-# sp3_plants_level
-
-# [SE2.2] Estimate diversity with the suggested base coverage
-runtime_start <- Sys.time() # 5 mins for q=0 | 7 mins for q=c(0,1,2)
-sp3_plants_output <- 
-  rbind(
-    iNEXT::estimateD(x = sp3_plants_list, q = c(0), datatype="incidence_freq", base="coverage", level=NULL, conf=0.95)
-    ,
-    iNEXT::estimateD(x = sp3_plants_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=0.9, conf=0.95)
-  )
-runtime_end <- Sys.time()
-runtime_end - runtime_start
-rm(runtime_start,runtime_end)
-
-# [SE3] RESULTS PLOT 
-sp3_plants_output
-
-sp3_plants_output |>
-  dplyr::mutate(
-    Assemblage_Group = sub("_[0-9]+$", "", Assemblage),
-    Assemblage_Period = factor(if_else(is.na(stringr::str_extract(Assemblage, "\\d+")), "548", stringr::str_extract(Assemblage, "\\d+")), 
-                               levels = c("1029","983","937","891","845","799","753","707","661","548"))
-  ) |> 
-  # Plot
-  ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
-  geom_point(size = 2) + 
-  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
-                         #, linewidth = 1 , width = 1
-  ) +
-  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
-  facet_wrap(~Order.q, scales = "free_y",
-             strip.position = "left",
-             labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
-  theme_bw() + 
-  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
-  labs(title = "Plants species diversity estimates", 
-       x = "Assamblage Period", y = "Diversity (qD)")
-
-# [1.x] species_group=="Plants" <end> -------------------------------------------
-```
 
 
 ##### sp3_mammals  
@@ -1163,8 +1091,158 @@ sp3_mammals_output |>
 
 # [1.x] species_group=="Mammals" <end> -------------------------------------------
 ```
+##### sp3_plants  
+
+```{r}
+# [1.x] species_group=="Plants" <start> -----------------------------------------
+# Convert df into list of numeric vectors 
+sp3_plants_list <- lapply(
+  as.list(
+    sp3 |> 
+      filter(species_group=="Plants") |> 
+      select(-c(species_group, species))
+  ), 
+  na.omit) 
+
+# Preview list of vectors 
+# lapply(sp3_plants_list, function(x) head(x, 10))
+
+# [SE2] ESTIMATE BIODIVERSITY
+
+# [SE2.1] Get Base coverage 
+# sp3_plants_iNEXT <- iNEXT::iNEXT(sp3_plants_list, q=0, datatype="incidence_freq")
+# # Step 3. The suggested base coverage is the maximum of C_a and C_b
+# sp3_plants_level <- max(
+#   # Step 1. Compute the maximum coverage of reference sample sizes
+#   max(sp3_plants_iNEXT$DataInfo$SC),
+#   # Step 2. Compute the minimum coverage of r times reference sample sizes. r = 2
+#   sp3_plants_iNEXT$iNextEst$coverage_based |>
+#     dplyr::group_by(Assemblage) |>
+#     dplyr::slice_max(t, n = 1) %>%
+#     dplyr::ungroup() |>
+#     select(SC) |>
+#     min()
+# )
+# sp3_plants_level
+
+# [SE2.2] Estimate diversity with the suggested base coverage
+runtime_start <- Sys.time() # 5 mins for q=0 | 7 mins for q=c(0,1,2)
+sp3_plants_output <- 
+  rbind(
+    iNEXT::estimateD(x = sp3_plants_list, q = c(0), datatype="incidence_freq", base="coverage", level=NULL, conf=0.95)
+    ,
+    iNEXT::estimateD(x = sp3_plants_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=0.9, conf=0.95)
+  )
+runtime_end <- Sys.time()
+runtime_end - runtime_start
+rm(runtime_start,runtime_end)
+
+# [SE3] RESULTS PLOT 
+sp3_plants_output
+
+sp3_plants_output |>
+  dplyr::mutate(
+    Assemblage_Group = sub("_[0-9]+$", "", Assemblage),
+    Assemblage_Period = factor(if_else(is.na(stringr::str_extract(Assemblage, "\\d+")), "548", stringr::str_extract(Assemblage, "\\d+")), 
+                               levels = c("1029","983","937","891","845","799","753","707","661","548"))
+  ) |> 
+  # Plot
+  ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
+  geom_point(size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
+                         #, linewidth = 1 , width = 1
+  ) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
+  facet_wrap(~Order.q, scales = "free_y",
+             strip.position = "left",
+             labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
+  theme_bw() + 
+  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
+  labs(title = "Plants species diversity estimates", 
+       x = "Assamblage Period", y = "Diversity (qD)")
+
+# [1.x] species_group=="Plants" <end> -------------------------------------------
+```
+
+##### sp3_reptiles  
+
+```{r}
+# [1.x] species_group=="Reptiles" <start> -----------------------------------------
+# Convert df into list of numeric vectors 
+sp3_reptiles_list <- lapply(
+  as.list(
+    sp3 |> 
+      filter(species_group=="Reptiles") |> 
+      select(-c(species_group, species))
+  ), 
+  na.omit) 
+
+# Preview list of vectors 
+# lapply(sp3_reptiles_list, function(x) head(x, 10))
+
+# [SE2] ESTIMATE BIODIVERSITY
+
+# [SE2.1] Get Base coverage 
+# sp3_reptiles_iNEXT <- iNEXT::iNEXT(sp3_reptiles_list, q=0, datatype="incidence_freq")
+# # Step 3. The suggested base coverage is the maximum of C_a and C_b
+# sp3_reptiles_level <- max(
+#   # Step 1. Compute the maximum coverage of reference sample sizes
+#   max(sp3_reptiles_iNEXT$DataInfo$SC),
+#   # Step 2. Compute the minimum coverage of r times reference sample sizes. r = 2
+#   sp3_reptiles_iNEXT$iNextEst$coverage_based |>
+#     dplyr::group_by(Assemblage) |>
+#     dplyr::slice_max(t, n = 1) %>%
+#     dplyr::ungroup() |>
+#     select(SC) |>
+#     min()
+# )
+# sp3_reptiles_level
+
+# [SE2.2] Estimate diversity with the suggested base coverage
+runtime_start <- Sys.time() # 5 mins for q=0 | 7 mins for q=c(0,1,2)
+sp3_reptiles_output <- 
+  rbind(
+    iNEXT::estimateD(x = sp3_reptiles_list, q = c(0), datatype="incidence_freq", base="coverage", level=NULL, conf=0.95)
+    ,
+    iNEXT::estimateD(x = sp3_reptiles_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=0.9, conf=0.95)
+  )
+runtime_end <- Sys.time()
+runtime_end - runtime_start
+rm(runtime_start,runtime_end)
+
+# [SE3] RESULTS PLOT 
+sp3_reptiles_output
+
+sp3_reptiles_output |>
+  dplyr::mutate(
+    Assemblage_Group = sub("_[0-9]+$", "", Assemblage),
+    Assemblage_Period = factor(if_else(is.na(stringr::str_extract(Assemblage, "\\d+")), "548", stringr::str_extract(Assemblage, "\\d+")), 
+                               levels = c("1029","983","937","891","845","799","753","707","661","548"))
+  ) |> 
+  # Plot
+  ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
+  geom_point(size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
+                         #, linewidth = 1 , width = 1
+  ) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
+  facet_wrap(~Order.q, scales = "free_y",
+             strip.position = "left",
+             labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
+  theme_bw() + 
+  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
+  labs(title = "Reptiles species diversity estimates", 
+       x = "Assamblage Period", y = "Diversity (qD)")
+
+# [1.x] species_group=="Reptiles" <end> -------------------------------------------
+```
 
 
+
+
+<!-- ----------------------------------------------------------------------- -->
+<!-- ----------------------------------------------------------------------- -->
+<!-- ----------------------------------------------------------------------- -->
 
 # Appendix  
 ## Appendix 2  
