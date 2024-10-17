@@ -844,6 +844,21 @@
       ],
       "Hash": "320c8fe23fcb25a6690ef7bdb6a3a705"
     },
+    "iNEXT": {
+      "Package": "iNEXT",
+      "Version": "3.0.1",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "Rcpp",
+        "ggplot2",
+        "graphics",
+        "reshape2",
+        "stats"
+      ],
+      "Hash": "81766ec84732c1c3c19164d1f97feae2"
+    },
     "ids": {
       "Package": "ids",
       "Version": "1.0.1",
@@ -1160,6 +1175,17 @@
       ],
       "Hash": "01f28d4278f15c76cddbea05899c5d6f"
     },
+    "plyr": {
+      "Package": "plyr",
+      "Version": "1.8.9",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "Rcpp"
+      ],
+      "Hash": "6b8177fd19982f0020743fadbfdbd933"
+    },
     "potions": {
       "Package": "potions",
       "Version": "0.2.0",
@@ -1359,6 +1385,19 @@
         "withr"
       ],
       "Hash": "97b1d5361a24d9fb588db7afe3e5bcbf"
+    },
+    "reshape2": {
+      "Package": "reshape2",
+      "Version": "1.4.4",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "Rcpp",
+        "plyr",
+        "stringr"
+      ],
+      "Hash": "bb5996d0bd962d214a11140d77589917"
     },
     "rlang": {
       "Package": "rlang",

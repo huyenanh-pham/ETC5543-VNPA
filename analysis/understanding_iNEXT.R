@@ -129,8 +129,8 @@ data(ant)
 ant
 
 # data(ant) contains 5 lists of incidence frequencies = Ant species incidence frequencies for samples from five elevations/assemblages in northeastern Costa Rica (Longino and Colwell 2011). 
-# The number of sampling units (1m x 1m forest floor plot) for the 5 assemblages are respectively 599, 230, 150, 200 and 200. 
-# The number of observed species for the 5 assemblages are respectively 227, 241, 122, 56 and 14.
+# T <- The number of sampling units (1m x 1m forest floor plot) for the 5 assemblages are respectively 599, 230, 150, 200 and 200. 
+# S.obs <- The number of observed species for the 5 assemblages are respectively 227, 241, 122, 56 and 14.
 # number of observed species in each 
 
 # the species diversity with a specified level of sample coverage of 98.5% for the ant data
@@ -159,7 +159,7 @@ estimateD(ant, datatype="incidence_freq",
 
 # iNEXT: Interpolation and extrapolation of Hill number with order q
 # iNEXT::iNEXT(ant, datatype = "incidence_freq") <start> -----------------------
-
+ant_iNEXT <- iNEXT::iNEXT(ant, datatype = "incidence_freq")
 # Compare 5 assemblages with Hill number order q = 0.
 # $class: iNEXT
 
@@ -210,7 +210,7 @@ estimateD(ant, datatype="incidence_freq",
 # 10        h50m 0.9835584  299   Rarefaction       0 193.069392 183.803012 202.335773
 # 20        h50m 0.9918134  599      Observed       0 227.000000 211.631902 242.368098
 # 30        h50m 0.9947564  883 Extrapolation       0 245.732481 223.678947 267.786015
-# 40        h50m 0.9968008 1198 Extrapolation       0 258.745498 231.337069 286.153928
+# 40        h50m 0.9968008 1198 Extrapolation       0   231.337069 286.153928
 # 41       h500m 0.1952438    1   Rarefaction       0  12.795652  12.399490  13.191815
 # 50       h500m 0.9570103  115   Rarefaction       0 194.186787 180.462192 207.911382
 # 60       h500m 0.9759754  230      Observed       0 241.000000 220.809447 261.190553
@@ -253,10 +253,54 @@ estimateD(ant, datatype="incidence_freq",
 # 15       h50m Simpson diversity  50.747554  51.096751  0.8166395  49.496167  52.697335
 
 # iNEXT::iNEXT(ant, datatype = "incidence_freq") <end> -------------------------
-ant_iNEXT <- iNEXT::iNEXT(ant, q=0, datatype = "incidence_freq")
+
 ant_iNEXT$DataInfo
 
 estimateD(ant, datatype="incidence_freq", base="coverage", level=NULL, conf=0.95)
+
+# Assemblage        t        Method Order.q        SC         qD     qD.LCL     qD.UCL
+# 1        h50m 530.3017   Rarefaction       0 0.9908005 221.053107 207.717558 234.388656
+# 2        h50m 530.3017   Rarefaction       1 0.9908005  79.248885  77.005979  81.491790
+# 3        h50m 530.3017   Rarefaction       2 0.9908005  50.702667  49.130486  52.274848
+# 4       h500m 460.0000 Extrapolation       0 0.9908005 286.546519 261.411739 311.681299
+# 5       h500m 460.0000 Extrapolation       1 0.9908005 105.251434 100.963281 109.539587
+# 6       h500m 460.0000 Extrapolation       2 0.9908005  64.954755  61.613559  68.295952
+# 7      h1070m 222.9347 Extrapolation       0 0.9908005 132.397593 113.658345 151.136842
+# 8      h1070m 222.9347 Extrapolation       1 0.9908005  60.420007  57.214859  63.625156
+# 9      h1070m 222.9347 Extrapolation       2 0.9908005  41.975168  39.730854  44.219481
+# 10     h1500m 260.1448 Extrapolation       0 0.9908005  59.562376  43.735635  75.389118
+# 11     h1500m 260.1448 Extrapolation       1 0.9908005  26.854608  25.449619  28.259597
+# 12     h1500m 260.1448 Extrapolation       2 0.9908005  18.818857  17.754389  19.883325
+# 13     h2000m 141.6479   Rarefaction       0 0.9908005  13.509319  10.980768  16.037870
+# 14     h2000m 141.6479   Rarefaction       1 0.9908005   7.815447   7.045220   8.585675
+# 15     h2000m 141.6479   Rarefaction       2 0.9908005   5.842858   5.160139   6.525577
+
+ant_iNEXT$AsyEst |> dplyr::filter(Diversity == "Species richness")
+
+# Step 1. Compute the maximum coverage of reference sample sizes
+max(ant_iNEXT$DataInfo$SC)
+# C_a = 0.9964
+
+# Step 2. Compute the minimum coverage of r times reference sample sizes. r = 2
+ant_iNEXT$iNextEst$coverage_based |> 
+  dplyr::group_by(Assemblage) |> 
+  dplyr::slice_max(t, n = 1) %>%
+  dplyr::ungroup() |> 
+  select(SC) |> 
+  min()
+
+# Assemblage    SC     t Method        Order.q    qD qD.LCL qD.UCL
+# <chr>      <dbl> <dbl> <chr>           <dbl> <dbl>  <dbl>  <dbl>
+# 1 h1070m     0.995   300 Extrapolation       0 139.  116.    161. 
+# 2 h1500m     0.994   400 Extrapolation       0  65.7  35.7    95.7
+# 3 h2000m     1.00    400 Extrapolation       0  14.2   9.77   18.7
+# 4 h500m      0.991   460 Extrapolation       0 287.  256.    317. 
+# 5 h50m       0.997  1198 Extrapolation       0 259.  235.    282. 
+
+# C_b = 0.9908005
+
+# Step 3. The suggested base coverage is the maximum of C_a and C_b
+# max(0.9964, 0.9908005) = 0.9964
 
 # UNDERSTANDING THE incidence_freq DATA FORMAT ---------------------------------
 # A list of vectors

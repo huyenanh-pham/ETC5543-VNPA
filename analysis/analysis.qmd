@@ -665,9 +665,8 @@ sp1_output <-
   )
 Sys.time()
 
-# FOREST PLOT 
-
-# sp1_output |> 
+# RESULT FOREST PLOT 
+plot_sp1_output <- 
 sp1_output |> 
     dplyr::mutate(
     Assemblage_Group = sub("_[0-9]+$", "", Assemblage),
@@ -676,19 +675,23 @@ sp1_output |>
     ) |> 
   # Plot
   ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
-  geom_point(size = 2) + 
-  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
-                         #, linewidth = 1 , width = 1
+  geom_point(position = position_dodge(width = 0.5), size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL),
+                         position = position_dodge(width = 0.5), width = 0.5 #, linewidth = 1 
   ) +
   scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
                      name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
-             strip.position = "left",
+             strip.position = "top",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
   theme_bw() + 
-  theme(legend.position = "bottom", aspect.ratio = 1/1) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom", aspect.ratio = 1/1) +
   labs(title = "across XXX taxon groupings and XXX habitats",
        x = "Assemblage Period", y="")
+plot_sp1_output
+# Save as png
+ggsave(filename = "plot_sp1_output.png",plot = plot_sp1_output, dpi = "print",path = here::here("image"),
+       width = 2400, height = 1080, units = "px")
 ```
 
 #### sp2: burnt_after & unburnt_after by tsf_period
@@ -756,17 +759,17 @@ sp2_output |>
     ) |>
   # Plot
   ggplot(aes(x = tsf_period, y = qD, color = sample_id)) + 
-  geom_point(size = 2) + 
-  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
-                         #, linewidth = 1 , width = 1
+  geom_point(position = position_dodge(width = 0.5), size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL),
+                         position = position_dodge(width = 0.5), width = 0.5 #, linewidth = 1 
   ) +
   scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
                      name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
-             strip.position = "left",
+             strip.position = "top",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
   theme_bw() + 
-  theme(legend.position = "bottom", aspect.ratio = 1/1) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom", aspect.ratio = 1/1) +
   labs(title = "Species diversity estimates for up to 18 months after the 2019/2020 wildfires", 
        x = "Months since fire", y = "")
 # [sp2] burnt_after & unburnt_after by tsf_period <end> -------------------------------------------
@@ -860,17 +863,17 @@ sp3_amphibians_output |>
   ) |> 
   # Plot
   ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
-  geom_point(size = 2) + 
-  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
-                         #, linewidth = 1 , width = 1
+  geom_point(position = position_dodge(width = 0.5), size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL),
+                         position = position_dodge(width = 0.5), width = 0.5 #, linewidth = 1 
   ) +
   scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
                      name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
-             strip.position = "left",
+             strip.position = "top",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
   theme_bw() + 
-  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom", aspect.ratio = 1/1) + 
   labs(title = "Amphibian species diversity estimates", 
        x = "Assamblage Period", y = "Diversity (qD)")
 
@@ -960,17 +963,17 @@ sp3_birds_output |>
     ) |> 
   # Plot
   ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
-  geom_point(size = 2) + 
-  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
-                         #, linewidth = 1 , width = 1
+  geom_point(position = position_dodge(width = 0.5), size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL),
+                         position = position_dodge(width = 0.5), width = 0.5 #, linewidth = 1 
   ) +
   scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
                      name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
-             strip.position = "left",
+             strip.position = "top",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
   theme_bw() + 
-  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom", aspect.ratio = 1/1) + 
   labs(title = "Bird species diversity estimates", 
        x = "Assamblage Period", y = "Diversity (qD)")
 
@@ -1037,17 +1040,17 @@ sp3_insects_output |>
   ) |> 
   # Plot
   ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
-  geom_point(size = 2) + 
-  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
-                         #, linewidth = 1 , width = 1
+  geom_point(position = position_dodge(width = 0.5), size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL),
+                         position = position_dodge(width = 0.5), width = 0.5 #, linewidth = 1 
   ) +
   scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
                      name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
-             strip.position = "left",
+             strip.position = "top",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
   theme_bw() + 
-  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom", aspect.ratio = 1/1) + 
   labs(title = "Insects species diversity estimates", 
        x = "Assamblage Period", y = "Diversity (qD)")
 
@@ -1115,17 +1118,17 @@ sp3_mammals_output |>
   ) |> 
   # Plot
   ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
-  geom_point(size = 2) + 
-  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
-                         #, linewidth = 1 , width = 1
+  geom_point(position = position_dodge(width = 0.5), size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL),
+                         position = position_dodge(width = 0.5), width = 0.5 #, linewidth = 1 
   ) +
   scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
                      name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
-             strip.position = "left",
+             strip.position = "top",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
   theme_bw() + 
-  theme(legend.position = "bottom", aspect.ratio = 1/1) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom", aspect.ratio = 1/1) +
     labs(title = "Mammal species diversity estimates", 
        x = "Assamblage Period", y = "")
 
@@ -1188,17 +1191,17 @@ sp3_plants_output |>
   ) |> 
   # Plot
   ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
-  geom_point(size = 2) + 
-  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
-                         #, linewidth = 1 , width = 1
+  geom_point(position = position_dodge(width = 0.5), size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL),
+                         position = position_dodge(width = 0.5), width = 0.5 #, linewidth = 1 
   ) +
   scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
                      name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
-             strip.position = "left",
+             strip.position = "top",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
   theme_bw() + 
-  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom", aspect.ratio = 1/1) + 
   labs(title = "Plants species diversity estimates", 
        x = "Assamblage Period", y = "Diversity (qD)")
 
@@ -1262,17 +1265,17 @@ sp3_reptiles_output |>
   ) |> 
   # Plot
   ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
-  geom_point(size = 2) + 
-  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
-                         #, linewidth = 1 , width = 1
+  geom_point(position = position_dodge(width = 0.5), size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL),
+                         position = position_dodge(width = 0.5), width = 0.5 #, linewidth = 1 
   ) +
   scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
                      name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
-             strip.position = "left",
+             strip.position = "top",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
   theme_bw() + 
-  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom", aspect.ratio = 1/1) + 
   labs(title = "Reptiles species diversity estimates", 
        x = "Assamblage Period", y = "Diversity (qD)")
 
@@ -1361,17 +1364,17 @@ sp4_DryForests_output |>
   ) |> 
   # Plot
   ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
-  geom_point(size = 2) + 
-  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
-                         #, linewidth = 1 , width = 1
+  geom_point(position = position_dodge(width = 0.5), size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL),
+                         position = position_dodge(width = 0.5), width = 0.5 #, linewidth = 1 
   ) +
   scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
                      name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
-             strip.position = "left",
+             strip.position = "top",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
   theme_bw() + 
-  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom", aspect.ratio = 1/1) + 
   labs(title = "Dry Forests - diversity estimates", 
        x = "Assamblage Period", y = "")
 
@@ -1434,17 +1437,17 @@ sp4_Heathlands_output |>
   ) |> 
   # Plot
   ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
-  geom_point(size = 2) + 
-  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
-                         #, linewidth = 1 , width = 1
+  geom_point(position = position_dodge(width = 0.5), size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL),
+                         position = position_dodge(width = 0.5), width = 0.5 #, linewidth = 1 
   ) +
   scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
                      name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
-             strip.position = "left",
+             strip.position = "top",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
   theme_bw() + 
-  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "bottom", aspect.ratio = 1/1) + 
   labs(title = "Heathlands - diversity estimates", 
        x = "Assamblage Period", y = "")
 
