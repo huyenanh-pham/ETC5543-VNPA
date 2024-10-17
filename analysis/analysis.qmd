@@ -36,7 +36,7 @@ theme_minimal_hpha0042 <- theme_minimal() +
 theme_set(theme_minimal_hpha0042)
 ```
 
-### Data Wragnling   
+# Data Wragnling   
 
 ```{r}
 # PREPARE DATA FOR VISUALISATION
@@ -46,7 +46,7 @@ fire1920_timeframe <- data.frame(
 
 # Define color palette
 report_pal <- setNames(c(RColorBrewer::brewer.pal(n=8,name="Set2")[c(1,2)],
-                       "#F57C00", "#0D47A1","#FFCC80","#E3F2FD"),
+                       "#F57C00", "grey30","#FFCC80","grey70"), #"#0D47A1","#E3F2FD"
               c("parkres","fire",
                 "burnt_after", "unburnt_after", "burnt_before", "unburnt_before"))
 ```
@@ -185,7 +185,7 @@ sighting <- sighting |>
 head(sighting, 10)
 ```
 
-### Data Summary     
+# Data Summary     
 ```{r}
 sighting |> 
   sf::st_drop_geometry() |> 
@@ -196,7 +196,7 @@ sighting |>
     ) 
 ```
 
-### Standardising sampling periods  
+# Standardising sampling periods  
 
 Problem: Increased sighting effort after the fires. 
 
@@ -295,6 +295,8 @@ as.Date("2019-11-22") - 548
 as.Date("2018-05-22") + 548
 as.Date("2019-11-22") - as.Date("2018-02-19")
 ```
+
+#### sighting_final
 
 ```{r}
 # Set seed for reproducibility (stratified sampling procedure)
@@ -566,12 +568,25 @@ sighting_final |>
   pivot_wider(names_from = burnt, values_from = gridcell_count) |> 
   dplyr::mutate(gridcell_diff = burnt - unburnt)
 ```
-### Statistical Estimation   
+# Statistical Estimation   
+
+### Standardising Sample Completeness (SC)   
+
+**Sample Completeness** the extent to which a sample captures the true diversity of the assemblage it represents. It's a general concept that reflects how well the observed species in a sample represent the total species pool. A higher sample completeness implies that a larger proportion of the assemblage's true diversity has been sampled.
+
+**Sample Coverage** a specific metric used to quantify sample completeness. It is expressed as a percentage or proportion, with 100% (or 1) indicating complete coverage, meaning all species in the assemblage have been detected
+
+
+**Base Coverage** This is a specific coverage value selected for standardizing comparisons between multiple assemblages when using coverage-based rarefaction and extrapolation curves.
+
+The suggested base coverage by `iNEXT::iNEXT()` is used to standardize the level of sample completeness when comparing the diversity of multiple assemblages.
 
 **Sampling completeness**  
 Sampling completeness: how well the collected sample represents the true diversity of the entire community.  
 
 The importance of controlling the Sampling completeness: It is essential to control for sampling completeness because diversity estimates (like species richness, Shannon diversity, and Simpson diversity) tend to increase as sampling effort and completeness rise. Failure to account for variations in sampling effort can introduce biases and lead to inaccurate comparisons between different treatments or groups.
+
+#### sp1: all species groups  
 
 ```{r}
 # [sp1] all species groups
@@ -588,7 +603,6 @@ sp1 <- rbind(
     group_by(sample_id, species) |> 
     summarise(y.i = n_distinct(gridcell_id)) |> 
     dplyr::ungroup() |> 
-    # filter(species == "Acacia dealbata") 
     tidyr::pivot_wider(names_from = sample_id, values_from = y.i, values_fill = NULL) |> 
     dplyr::select(-c(species))
   )
@@ -616,10 +630,16 @@ Sys.time()
 
 rbind(sp1_output, sp1_output_q12)
 # FOREST PLOT 
+
 # sp1_output |> 
 rbind(sp1_output, sp1_output_q12) |> 
-  dplyr::mutate(Assemblage_Group = sub("_[0-9]+$", "", Assemblage)) |> 
-  ggplot(aes(x = Assemblage, y = qD, color = Assemblage_Group)) + 
+    dplyr::mutate(
+    Assemblage_Group = sub("_[0-9]+$", "", Assemblage),
+    Assemblage_Period = factor(if_else(is.na(stringr::str_extract(Assemblage, "\\d+")), "548", stringr::str_extract(Assemblage, "\\d+")), 
+                                  levels = c("1029","983","937","891","845","799","753","707","661","548"))
+    ) |> 
+  # Plot
+  ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
   geom_point(size = 2) + 
   ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
                          #, linewidth = 1 , width = 1
@@ -627,86 +647,275 @@ rbind(sp1_output, sp1_output_q12) |>
   scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
   facet_wrap(~Order.q, scales = "free_y") + 
   theme_bw() + 
-  theme(legend.position = "bottom", aspect.ratio = 1/1)
+  theme(legend.position = "bottom", aspect.ratio = 1/1) +
+  labs(title = "across XXX taxon groupings and XXX habitats")
 ```
 
-```{r}
-# [sp2]
-# sp2 <-
-#[1] T (NUMBER OF SAMPLING UNITS)
-sighting_final |>
-  filter(sample_id %in% c("burnt_after","unburnt_after")) |> 
-  group_by(sample_id, tsf_period) |> 
-    summarise(T = n_distinct(gridcell_id)) |> 
-    pivot_wider(names_from = sample_id, values_from = T, values_fill = NULL)
-  
-    
-# sp1 <- rbind(
-#   #[1] T (NUMBER OF SAMPLING UNITS)
-#   sighting_final |> 
-#     group_by(sample_id) |> 
-#     summarise(T = n_distinct(gridcell_id)) |> 
-#     pivot_wider(names_from = sample_id, values_from = T, values_fill = NULL)
-#   ,
-#   #[2] SPECIES INCIDENCE FREQUENCIES: Number of grid cells in which ith species was sighted
-#   sighting_final |> 
-#     group_by(sample_id, species) |> 
-#     summarise(y.i = n_distinct(gridcell_id)) |> 
-#     dplyr::ungroup() |> 
-#     # filter(species == "Acacia dealbata") 
-#     tidyr::pivot_wider(names_from = sample_id, values_from = y.i, values_fill = NULL) |> 
-#     dplyr::select(-c(species))
-#   )
-```
+#### sp2: burnt_after & unburnt_after by tsf_period
 
 ```{r}
-# [sp3] Across species_group  
-
-# [sp1] all species groups
-# [SE1] TRANSFORM INTO iNEXT datatype="incidence_freq" SUPPORTED INPUT FORMAT
-sp3_birds <- rbind(
+# [sp2] burnt_after & unburnt_after by tsf_period <start> -------------------------------------------
+sp2 <-
   #[1] T (NUMBER OF SAMPLING UNITS)
   sighting_final |>
-    dplyr::filter(species_group == "Birds") |>
-    group_by(sample_id) |> 
-    summarise(T = n_distinct(gridcell_id)) |> 
-    pivot_wider(names_from = sample_id, values_from = T, values_fill = NULL)
-  ,
-  #[2] SPECIES INCIDENCE FREQUENCIES: Number of grid cells in which ith species was sighted
-  sighting_final |> 
-    group_by(sample_id, species) |> 
-    dplyr::filter(species_group == "Birds") |>
-    summarise(y.i = n_distinct(gridcell_id)) |> 
-    dplyr::ungroup() |> 
-    # filter(species == "Acacia dealbata") 
-    tidyr::pivot_wider(names_from = sample_id, values_from = y.i, values_fill = NULL) |> 
-    dplyr::select(-c(species))
-  )
+  filter(sample_id %in% c("burnt_after", "unburnt_after")) |>
+  group_by(sample_id, tsf_period) |>
+  summarise(T = n_distinct(gridcell_id), .groups = "drop") |>
+  pivot_wider(
+    names_from = c(sample_id, tsf_period),
+    values_from = T,
+    values_fill = NULL
+  ) |>
+  dplyr::mutate(species = "T") |>
+  dplyr::select(species, everything()) |>
+  rbind(
+    #[2] SPECIES INCIDENCE FREQUENCIES: Number of grid cells in which ith species was sighted
+    sighting_final |>
+      filter(sample_id %in% c("burnt_after", "unburnt_after")) |>
+      group_by(sample_id, tsf_period, species) |>
+      summarise(y.i = n_distinct(gridcell_id), .groups = "drop") |>
+      dplyr::ungroup() |>
+      tidyr::pivot_wider(
+        names_from = c(sample_id, tsf_period),
+        values_from = y.i,
+        values_fill = NULL
+      )
+  ) |>
+  dplyr::select(-c(species))
 
 # Convert df into list of numeric vectors 
-sp3_birds_list <- lapply(as.list(sp3_birds), na.omit) 
+sp2_list <- lapply(
+  as.list(
+    sp2), 
+    na.omit) 
+# Preview list of vectors 
+lapply(sp2_list, function(x) head(x, 10))
+
+# [SE2] ESTIMATE BIODIVERSITY
+
+# [SE2.2] Estimate diversity with the suggested base coverage
+runtime_start <- Sys.time() # Time difference of 5.27859 mins
+sp2_output <- 
+  rbind(
+    iNEXT::estimateD(x = sp2_list, q = c(0), datatype="incidence_freq", base="coverage", level=NULL, conf=0.95)
+    ,
+    iNEXT::estimateD(x = sp2_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=0.9, conf=0.95)
+  )
+runtime_end <- Sys.time()
+runtime_end - runtime_start
+rm(runtime_start,runtime_end) 
+
+# [SE3] RESULTS PLOT 
+sp2_output
+
+sp2_output |>
+  dplyr::mutate(
+    sample_id = str_extract(Assemblage, "^[a-z]+_[a-z]+"), 
+    tsf_period = factor(stringr::str_extract(Assemblage, "\\d+-\\d+"),
+                        levels = c("0-3","3-6","6-9","9-12","12-15","15-18"))
+    ) |>
+  # Plot
+  ggplot(aes(x = tsf_period, y = qD, color = sample_id)) + 
+  geom_point(size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
+                         #, linewidth = 1 , width = 1
+  ) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
+  facet_wrap(~Order.q, scales = "free_y") + 
+  theme_bw() + 
+  theme(legend.position = "bottom", aspect.ratio = 1/1) +
+  labs(title = "Species diversity estimates for up to 18 months after the 2019/2020 wildfires", 
+       x = "Months since fire", y = "Diversity (qD)")
+# [sp2] burnt_after & unburnt_after by tsf_period <end> -------------------------------------------
+```
+
+
+<!-- Hsieh, T. C., Ma, K. H., & Chao, A. (2016). iNEXT: An R package for rarefaction and extrapolation of species diversity (Hill numbers). Methods in Ecology and Evolution, 7(12), 1451–1456. (https://doi.org/10.1111/2041-210X.12613) 
+- Application 2: An a-symptotic analysis: comparison of the estimated asymptotic diversities. It is based on statistical estimation of Hill numbers via three functions: ChaoRichness(), ChaoShannon() and ChaoSimpson(); these functions return, respectively, the estimated asymptote for Hill numbers of order q = 0, 1 and 2 (see Kendrick et al. 2015, for ant data).
+-->
+
+#### sp3  
+
+```{r}
+# [SE1] TRANSFORM INTO iNEXT datatype="incidence_freq" SUPPORTED INPUT FORMAT ---
+sp3 <-
+#[1] T (NUMBER OF SAMPLING UNITS = Number of grid cell)
+sighting_final |>
+  group_by(species_group, sample_id) |> 
+  summarise(T = n_distinct(gridcell_id), .groups="drop") |> 
+  pivot_wider(names_from = sample_id, values_from = T, values_fill = NULL) |> 
+  filter(species_group != "Molluscs") |> # No sighting in burnt_before_xxxx 
+  dplyr::mutate(species = "T") |> 
+  select(species_group, species, everything()) |> 
+  rbind(
+    #[2] SPECIES INCIDENCE FREQUENCIES: Number of grid cells in which ith species was sighted
+    sighting_final |> 
+      filter(species_group != "Molluscs") |> # No sighting in burnt_before_xxxx
+      group_by(sample_id, species_group, species) |> 
+      summarise(y.i = n_distinct(gridcell_id), .groups="drop") |> 
+      # filter(species == "Acacia dealbata") 
+      tidyr::pivot_wider(names_from = sample_id, values_from = y.i, values_fill = NULL) 
+  ) |> 
+  arrange(species_group)
+```
+
+##### sp3_amphibians  
+
+```{r}
+# [1.x] species_group=="Amphibians" <start> -----------------------------------------
+
+# Convert df into list of numeric vectors 
+sp3_amphibians_list <- lapply(
+  as.list(
+    sp3 |>
+      filter(species_group == "Amphibians") |>
+      select(-c(species_group, species))
+  ), 
+  na.omit) 
+
+# Preview list of vectors 
+lapply(sp3_amphibians_list, function(x) head(x, 10))
+
+# [SE2] ESTIMATE BIODIVERSITY
+
+# [SE2.1] Get Base coverage 
+# sp3_amphibians_iNEXT <- iNEXT::iNEXT(sp3_amphibians_list, q=0, datatype="incidence_freq")
+# 
+# # Step 3. The suggested base coverage is the maximum of C_a and C_b
+# sp3_amphibians_level <- max(
+#   # Step 1. Compute the maximum coverage of reference sample sizes
+#   max(sp3_amphibians_iNEXT$DataInfo$SC),
+#   # Step 2. Compute the minimum coverage of r times reference sample sizes. r = 2
+#   sp3_amphibians_iNEXT$iNextEst$coverage_based |>
+#     dplyr::group_by(Assemblage) |>
+#     dplyr::slice_max(t, n = 1) %>%
+#     dplyr::ungroup() |>
+#     select(SC) |>
+#     min()
+# )
+# sp3_amphibians_level
+
+# [SE2.2] Estimate diversity with the suggested base coverage
+runtime_start <- Sys.time() # 5 mins for q=0 | 7 mins for q=c(0,1,2)
+sp3_amphibians_output <- 
+  rbind(
+    iNEXT::estimateD(x = sp3_amphibians_list, q = c(0), datatype="incidence_freq", base="coverage", level=NULL, conf=0.95)
+    ,
+    iNEXT::estimateD(x = sp3_amphibians_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=0.9, conf=0.95)
+  )
+runtime_end <- Sys.time()
+runtime_end - runtime_start
+rm(runtime_start,runtime_end)
+
+# [SE3] RESULTS PLOT 
+sp3_amphibians_output
+
+sp3_amphibians_output |>
+  dplyr::mutate(
+    Assemblage_Group = sub("_[0-9]+$", "", Assemblage),
+    Assemblage_Period = factor(if_else(is.na(stringr::str_extract(Assemblage, "\\d+")), "548", stringr::str_extract(Assemblage, "\\d+")), 
+                               levels = c("1029","983","937","891","845","799","753","707","661","548"))
+  ) |> 
+  # Plot
+  ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
+  geom_point(size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
+                         #, linewidth = 1 , width = 1
+  ) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
+                     name = "Sampling region and period:") +
+  facet_wrap(~Order.q, scales = "free_y") + 
+  theme_bw() + 
+  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
+  labs(title = "Amphibian species diversity estimates", 
+       x = "Assamblage Period", y = "Diversity (qD)")
+
+# [1.x] species_group=="Amphibians" <end> -------------------------------------------
+```
+
+
+As such, we infer the strength of differences between treatments by categorizing  results by: “no overlap,” “partial overlap,” and “near-complete/complete overlap” of 95% confidence intervals (CI).
+
+q=0  
+No change in species richness between before-after fire and burnt-unburnt grid cells.  
+
+Higher Shannon Diversity in burnt-after than un-burnt after -> indicates more diversity and evenness in the community structure. 
+But this difference is not significant as 
+
+q=2  
+Higher Simpson Diversity (q=2) in burnt-after compared to unburnt-after regions. -> suggests that abundance is more evenly distributed among the common species, rather than being dominated by just one or two very abundant species
+
+```{r}
+sighting_final |>
+  filter(species_group == "Amphibians") |> 
+  group_by(sample_id, species) |>
+  summarise(obs_per_species = n()) |> 
+  filter(sample_id %in% c("burnt_after", "unburnt_after")) |> # arrange(desc(obs_per_species))
+  # Plot 
+  ggplot(aes(fill=species, y=obs_per_species, x=sample_id)) + 
+    geom_bar(position="fill", stat="identity") +
+  theme(legend.position = "bottom")
+```
+
+
+##### sp3_birds
+
+```{r}
+# [1.x] species_group=="Birds" <start> -----------------------------------------
+# Convert df into list of numeric vectors 
+sp3_birds_list <- lapply(
+  as.list(
+    sp3 |> 
+      filter(species_group=="Birds") |> 
+      select(-c(species_group, species))
+    ), 
+    na.omit) 
 
 # Preview list of vectors 
 lapply(sp3_birds_list, function(x) head(x, 10))
 
 # [SE2] ESTIMATE BIODIVERSITY
-Sys.time()
-# 5 mins for q=0
-# 7 mins for q=c(0,1,2)
+
+# [SE2.1] Get Base coverage 
+sp3_birds_iNEXT <- iNEXT::iNEXT(sp3_birds_list, q=0, datatype="incidence_freq")
+
+# Step 3. The suggested base coverage is the maximum of C_a and C_b
+sp3_birds_level <- max(
+  # Step 1. Compute the maximum coverage of reference sample sizes
+  max(sp3_birds_iNEXT$DataInfo$SC),
+  # Step 2. Compute the minimum coverage of r times reference sample sizes. r = 2
+  sp3_birds_iNEXT$iNextEst$coverage_based |>
+    dplyr::group_by(Assemblage) |>
+    dplyr::slice_max(t, n = 1) %>%
+    dplyr::ungroup() |>
+    select(SC) |>
+    min()
+)
+sp3_birds_level
+
+# [SE2.2] Estimate diversity with the suggested base coverage
+runtime_start <- Sys.time() # 5 mins for q=0 | 7 mins for q=c(0,1,2)
 sp3_birds_output <- 
   rbind(
     iNEXT::estimateD(x = sp3_birds_list, q = c(0), datatype="incidence_freq", base="coverage", level=NULL, conf=0.95)
     ,
     iNEXT::estimateD(x = sp3_birds_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=0.9, conf=0.95)
   )
-Sys.time()
+runtime_end <- Sys.time()
+runtime_end - runtime_start
+rm(runtime_start,runtime_end)
 
 # [SE3] RESULTS PLOT 
 sp3_birds_output
 
 sp3_birds_output |>
-  dplyr::mutate(Assemblage_Group = sub("_[0-9]+$", "", Assemblage)) |> 
-  ggplot(aes(x = Assemblage, y = qD, color = Assemblage_Group)) + 
+  dplyr::mutate(
+    Assemblage_Group = sub("_[0-9]+$", "", Assemblage),
+    Assemblage_Period = factor(if_else(is.na(stringr::str_extract(Assemblage, "\\d+")), "548", stringr::str_extract(Assemblage, "\\d+")), 
+                                  levels = c("1029","983","937","891","845","799","753","707","661","548"))
+    ) |> 
+  # Plot
+  ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
   geom_point(size = 2) + 
   ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
                          #, linewidth = 1 , width = 1
@@ -714,14 +923,161 @@ sp3_birds_output |>
   scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
   facet_wrap(~Order.q, scales = "free_y") + 
   theme_bw() + 
-  theme(legend.position = "bottom", aspect.ratio = 1/1)
+  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
+  labs(title = "Bird species diversity estimates", 
+       x = "Assamblage Period", y = "Diversity (qD)")
+
+# [1.x] species_group=="Birds" <end> -------------------------------------------
 ```
+
+After the fire, there is significant decline in Bird species richness in burnt regions comparing to unburnt regions.
+
+##### sp3_insects 
+
 ```{r}
-sp3_birds_output # SC_{q=0} 0.9854657
-sp3_birds[1,] * 2
-iNEXT::DataInfo(sp3_birds_list)$n
-max(iNEXT::DataInfo(sp3_birds_list)$SC)
+# [1.x] species_group=="Insects" <start> -----------------------------------------
+# Convert df into list of numeric vectors 
+sp3_insects_list <- lapply(
+  as.list(
+    sp3 |> 
+      filter(species_group=="Insects") |> 
+      select(-c(species_group, species))
+  ), 
+  na.omit) 
+
+# Preview list of vectors 
+lapply(sp3_insects_list, function(x) head(x, 10))
+
+# [SE2] ESTIMATE BIODIVERSITY
+
+# [SE2.1] Get Base coverage 
+sp3_insects_iNEXT <- iNEXT::iNEXT(sp3_insects_list, q=0, datatype="incidence_freq")
+
+# Step 3. The suggested base coverage is the maximum of C_a and C_b
+sp3_insects_level <- max(
+  # Step 1. Compute the maximum coverage of reference sample sizes
+  max(sp3_insects_iNEXT$DataInfo$SC),
+  # Step 2. Compute the minimum coverage of r times reference sample sizes. r = 2
+  sp3_insects_iNEXT$iNextEst$coverage_based |>
+    dplyr::group_by(Assemblage) |>
+    dplyr::slice_max(t, n = 1) %>%
+    dplyr::ungroup() |>
+    select(SC) |>
+    min()
+)
+sp3_insects_level
+
+# [SE2.2] Estimate diversity with the suggested base coverage
+runtime_start <- Sys.time() # 5 mins for q=0 | 7 mins for q=c(0,1,2)
+sp3_insects_output <- 
+  rbind(
+    iNEXT::estimateD(x = sp3_insects_list, q = c(0), datatype="incidence_freq", base="coverage", level=NULL, conf=0.95)
+    ,
+    iNEXT::estimateD(x = sp3_insects_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=0.9, conf=0.95)
+  )
+runtime_end <- Sys.time()
+runtime_end - runtime_start
+rm(runtime_start,runtime_end)
+
+# [SE3] RESULTS PLOT 
+sp3_insects_output
+
+sp3_insects_output |>
+  dplyr::mutate(
+    Assemblage_Group = sub("_[0-9]+$", "", Assemblage),
+    Assemblage_Period = factor(if_else(is.na(stringr::str_extract(Assemblage, "\\d+")), "548", stringr::str_extract(Assemblage, "\\d+")), 
+                               levels = c("1029","983","937","891","845","799","753","707","661","548"))
+  ) |> 
+  # Plot
+  ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
+  geom_point(size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
+                         #, linewidth = 1 , width = 1
+  ) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
+  facet_wrap(~Order.q, scales = "free_y") + 
+  theme_bw() + 
+  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
+  labs(title = "Insects species diversity estimates", 
+       x = "Assamblage Period", y = "Diversity (qD)")
+
+# [1.x] species_group=="Insects" <end> -------------------------------------------
 ```
+
+
+##### sp3_mammals  
+
+```{r}
+# [1.4] species_group=="Mammals" <start> -------------------------------------------
+
+# Convert df into list of numeric vectors 
+sp3_mammals_list <- lapply(
+  as.list(
+    sp3 |> 
+      filter(species_group=="Mammals") |> 
+      select(-c(species_group, species))
+  ), 
+  na.omit) 
+
+# Preview list of vectors 
+lapply(sp3_mammals_list, function(x) head(x, 10))
+
+# [SE2] ESTIMATE BIODIVERSITY
+
+# [SE2.1] Get Base coverage 
+sp3_mammals_iNEXT <- iNEXT::iNEXT(sp3_mammals_list, q=0, datatype="incidence_freq")
+
+# Step 3. The suggested base coverage is the maximum of C_a and C_b
+sp3_mammals_level <- max(
+  # Step 1. Compute the maximum coverage of reference sample sizes
+  max(sp3_mammals_iNEXT$DataInfo$SC),
+  # Step 2. Compute the minimum coverage of r times reference sample sizes. r = 2
+  sp3_mammals_iNEXT$iNextEst$coverage_based |>
+    dplyr::group_by(Assemblage) |>
+    dplyr::slice_max(t, n = 1) %>%
+    dplyr::ungroup() |>
+    select(SC) |>
+    min()
+)
+sp3_mammals_level
+
+# [SE2.2] Estimate diversity with the suggested base coverage
+runtime_start <- Sys.time() # 5 mins for q=0 | 7 mins for q=c(0,1,2)
+sp3_mammals_output <- 
+  rbind(
+    iNEXT::estimateD(x = sp3_mammals_list, q = c(0), datatype="incidence_freq", base="coverage", level=NULL, conf=0.95)
+    ,
+    iNEXT::estimateD(x = sp3_mammals_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=0.9, conf=0.95)
+  )
+runtime_end <- Sys.time()
+runtime_end - runtime_start
+rm(runtime_start,runtime_end)
+
+# [SE3] RESULTS PLOT 
+sp3_mammals_output
+
+sp3_mammals_output |>
+  dplyr::mutate(
+    Assemblage_Group = sub("_[0-9]+$", "", Assemblage),
+    Assemblage_Period = factor(if_else(is.na(stringr::str_extract(Assemblage, "\\d+")), "548", stringr::str_extract(Assemblage, "\\d+")), 
+                               levels = c("1029","983","937","891","845","799","753","707","661","548"))
+  ) |> 
+  # Plot
+  ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
+  geom_point(size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
+                         #, linewidth = 1 , width = 1
+  ) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
+  facet_wrap(~Order.q, scales = "free_y") + 
+  theme_bw() + 
+  theme(legend.position = "bottom", aspect.ratio = 1/1) +
+    labs(title = "Mammal species diversity estimates", 
+       x = "Assamblage Period", y = "Diversity (qD)")
+
+# [1.2] species_group=="Mammals" <end> -------------------------------------------
+```
+
 
 
 # Appendix  
