@@ -186,6 +186,36 @@ head(sighting, 10)
 ```
 
 # Data Summary     
+
+
+```{r}
+# Plot megafires 2019-20 extension
+# Presentation/About 
+tar_load(vic_map)
+tar_load(bbox_fire_1920)
+
+# VEGETATION CLASS sf POLYGONS 
+plot_evc_sf <- ggplot() + 
+  geom_sf(data = vic_map) +
+  geom_sf(data= evc_cropped, aes(fill= XGROUPNAME), col = "transparent") +
+  coord_sf(xlim = sf::st_bbox(evc_cropped)[c("xmin", "xmax")], ylim = sf::st_bbox(evc_cropped)[c("ymin", "ymax")]) + # Zoom
+  theme_minimal() +
+  theme(legend.position = "none") # Hide legends, too many classes
+ggsave(filename = "evc_sf.png",plot = plot_evc_sf, dpi = "print",path = here::here("image"))
+
+# VEGETATION CLASS OF EACH GRID CELL
+# Checking Plot
+plot_evc_group <- ggplot() +
+  tidyterra::geom_spatraster(data = evc_gridcell) +
+  scale_fill_viridis_d(na.value = "transparent") +  # Optional color scale
+  labs(subtitle = "Vegetation class of each grid cell",
+       fill = "Vegetation class") + 
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+ggsave(filename = "evc_gridcell.png",plot = plot_evc_group, dpi = "print",path = here::here("image"))
+```
+
 ```{r}
 sighting |> 
   sf::st_drop_geometry() |> 
@@ -195,6 +225,9 @@ sighting |>
     "observed" = length(unique(species)) # number of species
     ) 
 ```
+
+
+
 
 # Standardising sampling periods  
 
@@ -593,13 +626,19 @@ The importance of controlling the Sampling completeness: It is essential to cont
 # [SE1] TRANSFORM INTO iNEXT datatype="incidence_freq" SUPPORTED INPUT FORMAT
 sp1 <- rbind(
   #[1] T (NUMBER OF SAMPLING UNITS)
-  sighting_final |> 
+  sighting_final |>
+    # Filter-out
+    filter(!species_group %in% c("Molluscs"),
+           !evc_group %in% c("Riverine Grassy Woodlands or Forests","Rocky Outcrop or Escarpment Scrubs")) |>
     group_by(sample_id) |> 
     summarise(T = n_distinct(gridcell_id)) |> 
     pivot_wider(names_from = sample_id, values_from = T, values_fill = NULL)
   ,
   #[2] SPECIES INCIDENCE FREQUENCIES: Number of grid cells in which ith species was sighted
   sighting_final |> 
+    # Filter-out
+    filter(!species_group %in% c("Molluscs"),
+           !evc_group %in% c("Riverine Grassy Woodlands or Forests","Rocky Outcrop or Escarpment Scrubs")) |>
     group_by(sample_id, species) |> 
     summarise(y.i = n_distinct(gridcell_id)) |> 
     dplyr::ungroup() |> 
@@ -617,22 +656,19 @@ lapply(sp1_list, function(x) head(x, 10))
 Sys.time()
 # 5 mins for q=0
 # 7 mins for q=c(0,1,2)
+
 sp1_output <- 
   rbind(
     iNEXT::estimateD(x = sp1_list, q = c(0), datatype="incidence_freq", base="coverage", level=NULL, conf=0.95)
-    # ,
-    # iNEXT::estimateD(x = sp1_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=1, conf=0.95),
+    ,
+    iNEXT::estimateD(x = sp1_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=0.9, conf=0.95)
   )
 Sys.time()
 
-sp1_output_q12 <- iNEXT::estimateD(x = sp1_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=0.9, conf=0.95)
-Sys.time()
-
-rbind(sp1_output, sp1_output_q12)
 # FOREST PLOT 
 
 # sp1_output |> 
-rbind(sp1_output, sp1_output_q12) |> 
+sp1_output |> 
     dplyr::mutate(
     Assemblage_Group = sub("_[0-9]+$", "", Assemblage),
     Assemblage_Period = factor(if_else(is.na(stringr::str_extract(Assemblage, "\\d+")), "548", stringr::str_extract(Assemblage, "\\d+")), 
@@ -644,7 +680,8 @@ rbind(sp1_output, sp1_output_q12) |>
   ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
                          #, linewidth = 1 , width = 1
   ) +
-  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
+                     name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
              strip.position = "left",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
@@ -723,7 +760,8 @@ sp2_output |>
   ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
                          #, linewidth = 1 , width = 1
   ) +
-  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
+                     name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
              strip.position = "left",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
@@ -739,7 +777,7 @@ sp2_output |>
 - Application 2: An a-symptotic analysis: comparison of the estimated asymptotic diversities. It is based on statistical estimation of Hill numbers via three functions: ChaoRichness(), ChaoShannon() and ChaoSimpson(); these functions return, respectively, the estimated asymptote for Hill numbers of order q = 0, 1 and 2 (see Kendrick et al. 2015, for ant data).
 -->
 
-#### sp3  
+#### sp3: Species Group  
 
 ```{r}
 # [SE1] TRANSFORM INTO iNEXT datatype="incidence_freq" SUPPORTED INPUT FORMAT ---
@@ -758,7 +796,6 @@ sighting_final |>
       filter(species_group != "Molluscs") |> # No sighting in burnt_before_xxxx
       group_by(sample_id, species_group, species) |> 
       summarise(y.i = n_distinct(gridcell_id), .groups="drop") |> 
-      # filter(species == "Acacia dealbata") 
       tidyr::pivot_wider(names_from = sample_id, values_from = y.i, values_fill = NULL) 
   ) |> 
   arrange(species_group)
@@ -767,7 +804,7 @@ sighting_final |>
 ##### sp3_amphibians  
 
 ```{r}
-# [1.x] species_group=="Amphibians" <start> -----------------------------------------
+# [3.x] species_group=="Amphibians" <start> -----------------------------------------
 
 # Convert df into list of numeric vectors 
 sp3_amphibians_list <- lapply(
@@ -837,7 +874,7 @@ sp3_amphibians_output |>
   labs(title = "Amphibian species diversity estimates", 
        x = "Assamblage Period", y = "Diversity (qD)")
 
-# [1.x] species_group=="Amphibians" <end> -------------------------------------------
+# [3.x] species_group=="Amphibians" <end> -------------------------------------------
 ```
 
 
@@ -868,7 +905,7 @@ sighting_final |>
 ##### sp3_birds
 
 ```{r}
-# [1.x] species_group=="Birds" <start> -----------------------------------------
+# [3.x] species_group=="Birds" <start> -----------------------------------------
 # Convert df into list of numeric vectors 
 sp3_birds_list <- lapply(
   as.list(
@@ -927,7 +964,8 @@ sp3_birds_output |>
   ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
                          #, linewidth = 1 , width = 1
   ) +
-  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
+                     name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
              strip.position = "left",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
@@ -936,7 +974,7 @@ sp3_birds_output |>
   labs(title = "Bird species diversity estimates", 
        x = "Assamblage Period", y = "Diversity (qD)")
 
-# [1.x] species_group=="Birds" <end> -------------------------------------------
+# [3.x] species_group=="Birds" <end> -------------------------------------------
 ```
 
 After the fire, there is significant decline in Bird species richness in burnt regions comparing to unburnt regions.
@@ -944,7 +982,7 @@ After the fire, there is significant decline in Bird species richness in burnt r
 ##### sp3_insects 
 
 ```{r}
-# [1.x] species_group=="Insects" <start> -----------------------------------------
+# [3.x] species_group=="Insects" <start> -----------------------------------------
 # Convert df into list of numeric vectors 
 sp3_insects_list <- lapply(
   as.list(
@@ -1003,7 +1041,8 @@ sp3_insects_output |>
   ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
                          #, linewidth = 1 , width = 1
   ) +
-  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
+                     name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
              strip.position = "left",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
@@ -1012,7 +1051,7 @@ sp3_insects_output |>
   labs(title = "Insects species diversity estimates", 
        x = "Assamblage Period", y = "Diversity (qD)")
 
-# [1.x] species_group=="Insects" <end> -------------------------------------------
+# [3.x] species_group=="Insects" <end> -------------------------------------------
 ```
 
 
@@ -1020,7 +1059,7 @@ sp3_insects_output |>
 ##### sp3_mammals  
 
 ```{r}
-# [1.x] species_group=="Mammals" <start> -------------------------------------------
+# [3.x] species_group=="Mammals" <start> -------------------------------------------
 
 # Convert df into list of numeric vectors 
 sp3_mammals_list <- lapply(
@@ -1080,7 +1119,8 @@ sp3_mammals_output |>
   ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
                          #, linewidth = 1 , width = 1
   ) +
-  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
+                     name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
              strip.position = "left",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
@@ -1089,12 +1129,12 @@ sp3_mammals_output |>
     labs(title = "Mammal species diversity estimates", 
        x = "Assamblage Period", y = "")
 
-# [1.x] species_group=="Mammals" <end> -------------------------------------------
+# [3.x] species_group=="Mammals" <end> -------------------------------------------
 ```
 ##### sp3_plants  
 
 ```{r}
-# [1.x] species_group=="Plants" <start> -----------------------------------------
+# [3.x] species_group=="Plants" <start> -----------------------------------------
 # Convert df into list of numeric vectors 
 sp3_plants_list <- lapply(
   as.list(
@@ -1152,7 +1192,8 @@ sp3_plants_output |>
   ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
                          #, linewidth = 1 , width = 1
   ) +
-  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
+                     name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
              strip.position = "left",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
@@ -1161,13 +1202,13 @@ sp3_plants_output |>
   labs(title = "Plants species diversity estimates", 
        x = "Assamblage Period", y = "Diversity (qD)")
 
-# [1.x] species_group=="Plants" <end> -------------------------------------------
+# [3.x] species_group=="Plants" <end> -------------------------------------------
 ```
 
 ##### sp3_reptiles  
 
 ```{r}
-# [1.x] species_group=="Reptiles" <start> -----------------------------------------
+# [3.x] species_group=="Reptiles" <start> -----------------------------------------
 # Convert df into list of numeric vectors 
 sp3_reptiles_list <- lapply(
   as.list(
@@ -1225,7 +1266,8 @@ sp3_reptiles_output |>
   ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
                          #, linewidth = 1 , width = 1
   ) +
-  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")]) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
+                     name = "Sampling region and period:") +
   facet_wrap(~Order.q, scales = "free_y",
              strip.position = "left",
              labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
@@ -1234,9 +1276,180 @@ sp3_reptiles_output |>
   labs(title = "Reptiles species diversity estimates", 
        x = "Assamblage Period", y = "Diversity (qD)")
 
-# [1.x] species_group=="Reptiles" <end> -------------------------------------------
+# [3.x] species_group=="Reptiles" <end> -------------------------------------------
 ```
 
+
+#### sp4: Vegetation Group  
+
+```{r}
+# [SE1] TRANSFORM INTO iNEXT datatype="incidence_freq" SUPPORTED INPUT FORMAT ---
+sp4 <-
+#[1] T (NUMBER OF SAMPLING UNITS = Number of grid cell)
+sighting_final |>
+  # Filter-out
+  dplyr::filter(!evc_group %in% c("Riverine Grassy Woodlands or Forests","Rocky Outcrop or Escarpment Scrubs")) |> 
+  group_by(evc_group, sample_id) |> 
+  summarise(T = n_distinct(gridcell_id), .groups="drop") |> 
+  pivot_wider(names_from = sample_id, values_from = T, values_fill = NULL) |> 
+  dplyr::mutate(species = "T") |> 
+  select(evc_group, species, everything()) |>
+  rbind(
+    #[2] SPECIES INCIDENCE FREQUENCIES: Number of grid cells in which ith species was sighted
+    sighting_final |>
+      dplyr::filter(!evc_group %in% c("Riverine Grassy Woodlands or Forests","Rocky Outcrop or Escarpment Scrubs")) |> 
+      group_by(sample_id, evc_group, species) |> 
+      summarise(y.i = n_distinct(gridcell_id), .groups="drop") |> 
+      tidyr::pivot_wider(names_from = sample_id, values_from = y.i, values_fill = NULL) 
+  ) |> 
+  arrange(evc_group)
+```
+##### sp4_DryForests
+
+```{r}
+# [4.x] evc_group=="Dry Forests" <start> -----------------------------------------
+# Convert df into list of numeric vectors 
+sp4_DryForests_list <- lapply(
+  as.list(
+    sp4 |> 
+      filter(evc_group=="Dry Forests") |> 
+      select(-c(evc_group, species))
+  ), 
+  na.omit) 
+
+# Preview list of vectors 
+# lapply(sp4_DryForests_list, function(x) head(x, 10))
+
+# [SE2] ESTIMATE BIODIVERSITY
+
+# [SE2.1] Get Base coverage 
+# sp4_DryForests_iNEXT <- iNEXT::iNEXT(sp4_DryForests_list, q=0, datatype="incidence_freq")
+# # Step 3. The suggested base coverage is the maximum of C_a and C_b
+# sp4_DryForests_level <- max(
+#   # Step 1. Compute the maximum coverage of reference sample sizes
+#   max(sp4_DryForests_iNEXT$DataInfo$SC),
+#   # Step 2. Compute the minimum coverage of r times reference sample sizes. r = 2
+#   sp4_DryForests_iNEXT$iNextEst$coverage_based |>
+#     dplyr::group_by(Assemblage) |>
+#     dplyr::slice_max(t, n = 1) %>%
+#     dplyr::ungroup() |>
+#     select(SC) |>
+#     min()
+# )
+# sp4_DryForests_level
+
+# [SE2.2] Estimate diversity with the suggested base coverage
+runtime_start <- Sys.time() # 5 mins for q=0 | 7 mins for q=c(0,1,2)
+sp4_DryForests_output <- 
+  rbind(
+    iNEXT::estimateD(x = sp4_DryForests_list, q = c(0), datatype="incidence_freq", base="coverage", level=NULL, conf=0.95)
+    ,
+    iNEXT::estimateD(x = sp4_DryForests_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=0.9, conf=0.95)
+  )
+runtime_end <- Sys.time()
+runtime_end - runtime_start
+rm(runtime_start,runtime_end)
+
+# [SE3] RESULTS PLOT 
+sp4_DryForests_output
+
+sp4_DryForests_output |>
+  dplyr::mutate(
+    Assemblage_Group = sub("_[0-9]+$", "", Assemblage),
+    Assemblage_Period = factor(if_else(is.na(stringr::str_extract(Assemblage, "\\d+")), "548", stringr::str_extract(Assemblage, "\\d+")), 
+                               levels = c("1029","983","937","891","845","799","753","707","661","548"))
+  ) |> 
+  # Plot
+  ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
+  geom_point(size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
+                         #, linewidth = 1 , width = 1
+  ) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
+                     name = "Sampling region and period:") +
+  facet_wrap(~Order.q, scales = "free_y",
+             strip.position = "left",
+             labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
+  theme_bw() + 
+  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
+  labs(title = "Dry Forests - diversity estimates", 
+       x = "Assamblage Period", y = "")
+
+# [4.x] evc_group=="Dry Forests" <end> -------------------------------------------
+```
+
+##### sp4_Heathlands 
+```{r}
+# [4.x] evc_group=="Heathlands" <start> -----------------------------------------
+# Convert df into list of numeric vectors 
+sp4_Heathlands_list <- lapply(
+  as.list(
+    sp4 |> 
+      filter(evc_group=="Heathlands") |> 
+      select(-c(evc_group, species))
+  ), 
+  na.omit) 
+
+# Preview list of vectors 
+# lapply(sp4_Heathlands_list, function(x) head(x, 10))
+
+# [SE2] ESTIMATE BIODIVERSITY
+
+# [SE2.1] Get Base coverage 
+# sp4_Heathlands_iNEXT <- iNEXT::iNEXT(sp4_Heathlands_list, q=0, datatype="incidence_freq")
+# # Step 3. The suggested base coverage is the maximum of C_a and C_b
+# sp4_Heathlands_level <- max(
+#   # Step 1. Compute the maximum coverage of reference sample sizes
+#   max(sp4_Heathlands_iNEXT$DataInfo$SC),
+#   # Step 2. Compute the minimum coverage of r times reference sample sizes. r = 2
+#   sp4_Heathlands_iNEXT$iNextEst$coverage_based |>
+#     dplyr::group_by(Assemblage) |>
+#     dplyr::slice_max(t, n = 1) %>%
+#     dplyr::ungroup() |>
+#     select(SC) |>
+#     min()
+# )
+# sp4_Heathlands_level
+
+# [SE2.2] Estimate diversity with the suggested base coverage
+runtime_start <- Sys.time() # 5 mins for q=0 | 7 mins for q=c(0,1,2)
+sp4_Heathlands_output <- 
+  rbind(
+    iNEXT::estimateD(x = sp4_Heathlands_list, q = c(0), datatype="incidence_freq", base="coverage", level=NULL, conf=0.95)
+    ,
+    iNEXT::estimateD(x = sp4_Heathlands_list, q = c(1,2), datatype="incidence_freq", base="coverage", level=0.9, conf=0.95)
+  )
+runtime_end <- Sys.time()
+runtime_end - runtime_start
+rm(runtime_start,runtime_end)
+
+# [SE3] RESULTS PLOT 
+sp4_Heathlands_output
+
+sp4_Heathlands_output |>
+  dplyr::mutate(
+    Assemblage_Group = sub("_[0-9]+$", "", Assemblage),
+    Assemblage_Period = factor(if_else(is.na(stringr::str_extract(Assemblage, "\\d+")), "548", stringr::str_extract(Assemblage, "\\d+")), 
+                               levels = c("1029","983","937","891","845","799","753","707","661","548"))
+  ) |> 
+  # Plot
+  ggplot(aes(x = Assemblage_Period, y = qD, color = Assemblage_Group)) + 
+  geom_point(size = 2) + 
+  ggplot2::geom_errorbar(aes(ymin = qD.LCL, ymax = qD.UCL)
+                         #, linewidth = 1 , width = 1
+  ) +
+  scale_color_manual(values = report_pal[c("burnt_after","unburnt_after","burnt_before","unburnt_before")],
+                     name = "Sampling region and period:") +
+  facet_wrap(~Order.q, scales = "free_y",
+             strip.position = "left",
+             labeller = as_labeller(c(`0` = "Species Richness", `1` = "Shannon Diversity", `2` = "Simpson Diversity")) ) + 
+  theme_bw() + 
+  theme(legend.position = "bottom", aspect.ratio = 1/1) + 
+  labs(title = "Heathlands - diversity estimates", 
+       x = "Assamblage Period", y = "")
+
+# [4.x] evc_group=="Heathlands" <end> -------------------------------------------
+```
 
 
 
